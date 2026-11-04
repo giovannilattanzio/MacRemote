@@ -33,6 +33,7 @@ final class AppModel: ObservableObject {
     let monitor: HIDMonitor
     let permissions = Permissions()
     let hud = ModeHUD()
+    let notifier = ConnectionNotifier(defaults: Store.defaults)
 
     @Published var sidebar: SidebarItem = .remote
     /// Keeps App Nap away. A napping app gets its timers slowed to seconds,
@@ -45,6 +46,9 @@ final class AppModel: ObservableObject {
         monitor.onInput = { [engine] usage, pressed, device in
             engine.handle(usage: usage, pressed: pressed, exclusive: device.isExclusive, from: device.name)
         }
+        monitor.onConnection = { [notifier] device, connected in
+            notifier.connection(device, connected: connected)
+        }
         engine.onModeChange = { [hud] mode in
             if Store.defaults.object(forKey: "showModeHUD") as? Bool ?? true { hud.show(mode) }
         }
@@ -56,6 +60,7 @@ final class AppModel: ObservableObject {
             SampleData.fill(self)
         }
         guard !Store.isOverridden else { return }
+        notifier.useNotificationCenter()
         activity = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiatedAllowingIdleSystemSleep, .latencyCritical],
             reason: "Turning remote control presses into pointer and key events")

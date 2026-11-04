@@ -6,6 +6,7 @@ struct SettingsView: View {
     @AppStorage("pointerSpeed", store: Store.defaults) private var pointerSpeed = 0.5
     @AppStorage("scrollSpeed", store: Store.defaults) private var scrollSpeed = 0.5
     @AppStorage("showModeHUD", store: Store.defaults) private var showModeHUD = true
+    @AppStorage(ConnectionNotifier.settingKey, store: Store.defaults) private var notifyConnections = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xxl) {
@@ -17,6 +18,12 @@ struct SettingsView: View {
             Card(title: "General") {
                 Row(title: "Show the mode on screen when it changes") {
                     Toggle("Show the mode on screen", isOn: $showModeHUD)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                CardDivider()
+                Row(title: "Notify when a remote connects or disconnects") {
+                    Toggle("Notify when a remote connects or disconnects", isOn: $notifyConnections)
                         .toggleStyle(.switch)
                         .labelsHidden()
                 }

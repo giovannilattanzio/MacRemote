@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.mainMenu = makeMainMenu()
         statusItem = StatusItemController(model: model, delegate: self)
+        model.notifier.onOpen = { [weak self] in self?.showMainWindow() }
         model.start()
         showMainWindow()
         SelfTest.runIfRequested(model: model)

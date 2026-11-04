@@ -180,3 +180,24 @@ func batterySymbols(_ percent: Int, symbol: String, low: Bool) {
     #expect(Battery(raw: 100, logicalMin: 0, logicalMax: 255, isPercent: true)?.percent == 100)
     #expect(Battery(raw: 180, logicalMin: 0, logicalMax: 255, isPercent: true) == nil)
 }
+
+@Test func remotesPresentAtStartDoNotNotify() {
+    var watch = ConnectionWatch(start: 0)
+    #expect(watch.connected(id: "a", name: "Remote", at: 1) == nil)
+    #expect(watch.connected(id: "b", name: "Remote", at: 5) == ConnectionNotice(.connected, name: "Remote"))
+}
+
+@Test func disconnectsNotifyAfterSettling() {
+    var watch = ConnectionWatch(start: 0)
+    watch.disconnected(id: "a", name: "Remote", at: 10)
+    #expect(watch.due(at: 11).isEmpty)
+    #expect(watch.due(at: 13) == [ConnectionNotice(.disconnected, name: "Remote")])
+    #expect(watch.due(at: 20).isEmpty)
+}
+
+@Test func quickReconnectsStayQuiet() {
+    var watch = ConnectionWatch(start: 0)
+    watch.disconnected(id: "a", name: "Remote", at: 10)
+    #expect(watch.connected(id: "a", name: "Remote", at: 11) == nil)
+    #expect(watch.due(at: 20).isEmpty)
+}

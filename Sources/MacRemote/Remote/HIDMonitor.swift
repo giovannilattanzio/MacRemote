@@ -40,6 +40,8 @@ final class HIDMonitor: ObservableObject {
         devices.first { $0.isEnabled && $0.isOpen }
     }
     var onInput: ((HIDUsage, Bool, Device) -> Void)?
+    /// A remote in use appeared (true) or went away (false).
+    var onConnection: ((Device, Bool) -> Void)?
 
     private let defaults: UserDefaults
     private var manager: IOHIDManager?
@@ -211,6 +213,7 @@ final class HIDMonitor: ObservableObject {
                 isEnabled: fireTV ? !turnedOff.contains(id) : turnedOn.contains(id)
             ))
             devices.sort { ($0.isFireTV ? 0 : 1, $0.name) < ($1.isFireTV ? 0 : 1, $1.name) }
+            if let device = devices.first(where: { $0.id == id }), device.isEnabled { onConnection?(device, true) }
         }
         if devices.first(where: { $0.id == id })?.isEnabled == true { open(device, id: id) }
         readBattery(id)
@@ -224,6 +227,7 @@ final class HIDMonitor: ObservableObject {
         refs[id]?.removeAll { $0 === device }
         if refs[id]?.isEmpty ?? true {
             refs[id] = nil
+            if let device = devices.first(where: { $0.id == id }), device.isEnabled { onConnection?(device, false) }
             devices.removeAll { $0.id == id }
             arrayHeld = arrayHeld.filter { !$0.key.hasPrefix(id + "/") }
         } else {
