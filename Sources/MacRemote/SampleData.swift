@@ -27,7 +27,7 @@ enum SampleData {
             (.playPause, .consumer(0xCD), 95),
             (.home, .consumer(0x223), 160),
         ]
-        model.engine.show(sample: presses.map { button, usage, ago in
+        model.engine.show(lit: [.select, .right], sample: presses.map { button, usage, ago in
             let key = button.map(RemoteKey.init) ?? RemoteKey(usage: usage)
             return .init(key: key, usage: usage, action: profile.action(for: key, in: .navigation),
                          device: "Amazon Fire TV Remote", date: .now.addingTimeInterval(-ago), handledByMac: false)

@@ -26,4 +26,7 @@ enum Width {
     static let page: CGFloat = 720
     static let settings: CGFloat = 480
     static let sidebar: CGFloat = 200
+    /// The remote drawing on the Remote page, and its thumbnail in Devices.
+    static let remotePicture: CGFloat = 72
+    static let remoteThumbnail: CGFloat = 16
 }

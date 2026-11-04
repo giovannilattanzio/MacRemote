@@ -36,22 +36,42 @@ struct RemotePage: View {
 
     private var canSearch: Bool { permissions.inputMonitoring || Store.isOverridden }
 
+    private var layout: RemoteLayout {
+        RemoteLayout.forRemote(productID: monitor.activeRemote?.productID ?? 0, seen: engine.seen)
+    }
+
+    private var lastPressDescription: String {
+        guard let press = engine.recent.first else { return "Press a button and it lights up on the remote." }
+        return press.action == .none ? "\(press.key.title) · not set" : "\(press.key.title) · \(press.action.title)"
+    }
+
     var body: some View {
         Page {
             Card(footer: engine.mode == .navigation
                  ? "The D-pad sends arrow keys and Select presses Return. Press Menu on the remote to switch to Pointer."
                  : "The D-pad moves the pointer and Select clicks. Hold Select while moving to drag. Press Menu to switch back.") {
-                status
-                CardDivider()
-                Row(title: "Mode") {
-                    Picker("Mode", selection: Binding(get: { engine.mode }, set: { engine.setMode($0) })) {
-                        ForEach(RemoteMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                HStack(alignment: .center, spacing: Space.xl) {
+                    RemoteIllustration(layout: layout, lit: engine.lit, width: Width.remotePicture,
+                                       isConnected: monitor.activeRemote != nil)
+                        .padding(.vertical, Space.lg)
+                        .padding(.leading, Space.sm)
+                    VStack(alignment: .leading, spacing: 0) {
+                        status
+                        CardDivider()
+                        Row(title: "Mode") {
+                            Picker("Mode", selection: Binding(get: { engine.mode }, set: { engine.setMode($0) })) {
+                                ForEach(RemoteMode.allCases) { mode in
+                                    Text(mode.title).tag(mode)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .fixedSize()
                         }
+                        CardDivider()
+                        Row(title: "Last button",
+                            subtitle: lastPressDescription)
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
                 }
             }
 
@@ -80,19 +100,16 @@ struct RemotePage: View {
     @ViewBuilder
     private var status: some View {
         if let name = monitor.activeRemoteName {
-            Row(title: name, subtitle: engine.isEnabled ? "Connected and in use" : "Connected, paused",
-                symbol: "av.remote.fill") {
+            Row(title: name, subtitle: engine.isEnabled ? "Connected and in use" : "Connected, paused") {
                 Toggle("Use Remote", isOn: $engine.isEnabled)
                     .toggleStyle(.switch)
                     .labelsHidden()
             }
         } else if !canSearch {
             Row(title: "Looking for Remotes Is Off",
-                subtitle: "Allow Input Monitoring below so MacRemote can find the remote.",
-                symbol: "av.remote")
+                subtitle: "Allow Input Monitoring below so MacRemote can find the remote.")
         } else {
-            Row(title: "No Remote Connected", subtitle: "Pair a Fire TV remote in Bluetooth settings. Steps below.",
-                symbol: "av.remote")
+            Row(title: "No Remote Connected", subtitle: "Pair a Fire TV remote in Bluetooth settings. Steps below.")
         }
     }
 }
@@ -286,6 +303,20 @@ private struct DeviceRow: View {
     }
 
     var body: some View {
+        HStack(spacing: Space.md) {
+            if device.isFireTV {
+                RemoteIllustration(layout: RemoteLayout.forRemote(productID: device.productID),
+                                   width: Width.remoteThumbnail, isConnected: device.isOpen)
+                    .padding(.vertical, Space.sm)
+            }
+            row
+        }
+        .help(device.isEnabled && !device.isExclusive
+              ? "macOS also reads this device, so its arrow, Return, and media keys act on their own too."
+              : String(format: "Vendor %04X, product %04X", device.vendorID, device.productID))
+    }
+
+    private var row: some View {
         Row(title: device.name, subtitle: status) {
             Toggle("Use as Remote", isOn: Binding(
                 get: { device.isEnabled },
@@ -294,8 +325,5 @@ private struct DeviceRow: View {
             .toggleStyle(.switch)
             .labelsHidden()
         }
-        .help(device.isEnabled && !device.isExclusive
-              ? "macOS also reads this device, so its arrow, Return, and media keys act on their own too."
-              : String(format: "Vendor %04X, product %04X", device.vendorID, device.productID))
     }
 }

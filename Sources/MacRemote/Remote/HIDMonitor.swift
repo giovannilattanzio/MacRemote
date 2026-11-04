@@ -31,8 +31,11 @@ final class HIDMonitor: ObservableObject {
     @Published private(set) var devices: [Device] = []
 
     /// The name of the first connected remote in use, for status lines.
-    var activeRemoteName: String? {
-        devices.first { $0.isEnabled && $0.isOpen }?.name
+    var activeRemoteName: String? { activeRemote?.name }
+
+    /// The first connected remote in use.
+    var activeRemote: Device? {
+        devices.first { $0.isEnabled && $0.isOpen }
     }
     var onInput: ((HIDUsage, Bool, Device) -> Void)?
 

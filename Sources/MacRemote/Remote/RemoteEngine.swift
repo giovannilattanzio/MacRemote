@@ -25,6 +25,10 @@ final class RemoteEngine: ObservableObject {
     }
     /// The newest first, at most 12.
     @Published private(set) var recent: [Press] = []
+    /// Buttons held down right now, to light up the remote picture.
+    @Published private(set) var lit: Set<RemoteButton> = []
+    /// Every button pressed since launch. A TV control here means the remote has them.
+    @Published private(set) var seen: Set<RemoteButton> = []
     var onModeChange: ((RemoteMode) -> Void)?
 
     /// 0 slow ... 1 fast, from Settings.
@@ -81,6 +85,14 @@ final class RemoteEngine: ObservableObject {
     func handle(usage: HIDUsage, pressed: Bool, exclusive: Bool, from device: String) {
         let key = RemoteKey(usage: usage)
         if key.button == nil, !profile.keys.contains(key) { profile.learn(key) }
+        if let button = key.button {
+            if pressed {
+                lit.insert(button)
+                if !seen.contains(button) { seen.insert(button) }
+            } else {
+                lit.remove(button)
+            }
+        }
         if pressed { press(key, usage: usage, exclusive: exclusive, device: device) } else { release(key) }
     }
 
@@ -172,5 +184,8 @@ final class RemoteEngine: ObservableObject {
     }
 
     /// Sample presses for snapshots.
-    func show(sample: [Press]) { recent = sample }
+    func show(lit sampleLit: Set<RemoteButton> = [], sample: [Press]) {
+        recent = sample
+        lit = sampleLit
+    }
 }

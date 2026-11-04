@@ -122,3 +122,11 @@ func resolves(_ usage: HIDUsage, button: RemoteButton) {
     #expect(KeyBlock.setting(blocked: false) == #"{"UserKeyMapping":[]}"#)
     #expect(KeyBlock.matching(vendorID: 6473, productID: 1028) == #"{"VendorID":6473,"ProductID":1028}"#)
 }
+
+@Test func layoutFollowsProductAndPresses() {
+    #expect(RemoteLayout.forRemote(productID: 0x0404) == .classic)
+    #expect(RemoteLayout.forRemote(productID: 0x0404, seen: [.select, .home]) == .classic)
+    #expect(RemoteLayout.forRemote(productID: 0x0404, seen: [.volumeUp]) == .tvControls)
+    #expect(!RemoteLayout.classic.buttons.contains(.mute))
+    #expect(RemoteLayout.tvControls.buttons.contains(.power))
+}
