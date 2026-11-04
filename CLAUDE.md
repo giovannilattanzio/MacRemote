@@ -1,11 +1,21 @@
 # MacRemote
 
-A native macOS app in SwiftUI. It runs on this Mac only, with a local
-SwiftData database and no server.
+A native macOS app in SwiftUI that lets a Bluetooth remote control the Mac,
+starting with Amazon Fire TV (Alexa Voice) remotes. It lives in the window
+and the menu bar; settings and button choices are in UserDefaults.
+
+How it works: `Remote/HIDMonitor.swift` finds HID devices (IOHIDManager),
+opens Fire TV remotes (vendor 0x1949 or name match) exclusively when it can,
+and reports (usage page, usage, pressed). `Remote/RemoteEngine.swift` looks
+the button up in the `Profile` for the current mode (Navigation or Pointer)
+and runs it once, repeats it, or keeps moving the pointer while held.
+`Remote/EventSynth.swift` posts the CGEvents. Permissions: Input Monitoring
+(read the remote) and Accessibility (post events). Buttons the app does not
+know are learned by usage and show in the Buttons page.
 
 ## Layout
 
-- `Sources/MacRemote/` the app. `App.swift` has the window, menus, and the database location.
+- `Sources/MacRemote/` the app. `App.swift` has the window, menu bar item, menus, and where settings live.
 - `Sources/MacRemoteKit/` rules and data logic with no SwiftUI. Tests in `Tests/MacRemoteKitTests/`.
 - `Package.swift` a Swift package. There is no Xcode project.
 - `build.sh` builds, signs, and installs `~/Applications/MacRemote.app`.
@@ -18,10 +28,11 @@ SwiftData database and no server.
 - Unit tests: `swift test --scratch-path ~/Library/Developer/MacRemote/test-build`.
 - Self-test (the app's real functions on a /tmp store): `tools/selftest.sh`. Exit 0 when every check passes. Add a check for every story with logic in `SelfTest.swift`.
 - After every UI change, take snapshots with sample data and look at them: `tools/snap.sh`.
-  It writes `/tmp/MacRemote-shots/<page>-light.png` and `-dark.png` for every sidebar page, and `settings-<tab>-light.png` and `-dark.png` for every Settings tab, then quits. `APP_SNAPSHOT_PAGES=all,settings tools/snap.sh` limits the pages.
+  It writes `/tmp/MacRemote-shots/<page>-light.png` and `-dark.png` for every sidebar page, and `settings-<tab>-light.png` and `-dark.png` for every Settings tab, then quits. `APP_SNAPSHOT_PAGES=remote,settings tools/snap.sh` limits the pages.
   For a panel, sheet, or popover, add a capture to `Snapshot.swift` like the Settings loop.
-- Snapshots, seed data, and the self-test refuse to run without `APP_STORE` in /tmp.
-- Never test against the real database in `~/Library/Application Support/MacRemote/`.
+- Snapshots, seed data, and the self-test refuse to run without `APP_STORE`. With it set, settings go to a throwaway defaults domain and no real remote is opened.
+- The self-test drives the real engine with simulated presses into a recorder; nothing is posted to the Mac.
+- Ad hoc builds lose Input Monitoring and Accessibility after every rebuild: remove MacRemote from both lists in Privacy & Security and add it again.
 - Then check the grid: `tools/grid-lint.sh` and `swift tools/check-layout.swift /tmp/MacRemote-shots/*-layout.json`. Both print PASS.
 - A change is done when the build has no errors, the grid checks pass, and you looked at the light and dark snapshots.
 

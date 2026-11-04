@@ -1,0 +1,105 @@
+import Foundation
+import Testing
+@testable import MacRemoteKit
+
+@Test("Fire TV usages resolve to buttons", arguments: [
+    (HIDUsage.key(0x52), RemoteButton.up),
+    (HIDUsage.consumer(0x42), RemoteButton.up),
+    (HIDUsage.key(0x28), RemoteButton.select),
+    (HIDUsage.consumer(0x41), RemoteButton.select),
+    (HIDUsage.consumer(0x224), RemoteButton.back),
+    (HIDUsage.consumer(0x223), RemoteButton.home),
+    (HIDUsage.consumer(0x40), RemoteButton.menu),
+    (HIDUsage.consumer(0xCD), RemoteButton.playPause),
+    (HIDUsage.consumer(0xB4), RemoteButton.rewind),
+    (HIDUsage.consumer(0xB3), RemoteButton.fastForward),
+    (HIDUsage.consumer(0xE9), RemoteButton.volumeUp),
+])
+func resolves(_ usage: HIDUsage, button: RemoteButton) {
+    #expect(RemoteButton(usage: usage) == button)
+    #expect(RemoteKey(usage: usage) == RemoteKey(button))
+}
+
+@Test func unknownUsagesBecomeLearnedKeys() {
+    let key = RemoteKey(usage: .consumer(0x1A0))
+    #expect(key.button == nil)
+    #expect(key.raw == "usage:0C:01A0")
+    #expect(key.title == "Button 0C:01A0")
+}
+
+@Test func placeholderUsagesAreNotButtons() {
+    #expect(!HIDUsage.key(0x01).isButton)
+    #expect(!HIDUsage(page: 0x07, usage: 0xFFFF_FFFF).isButton)
+    #expect(!HIDUsage.consumer(0x01).isButton)
+    #expect(HIDUsage.key(0x52).isButton)
+    #expect(HIDUsage.consumer(0x224).isButton)
+}
+
+@Test func recognizesFireTVRemotes() {
+    #expect(FireTVRemote.isFireTVRemote(vendorID: 0x1949, product: "Remote"))
+    #expect(FireTVRemote.isFireTVRemote(vendorID: 0, product: "Amazon Fire TV Remote"))
+    #expect(!FireTVRemote.isFireTVRemote(vendorID: 0x05AC, product: "Magic Keyboard"))
+}
+
+@Test func standardProfileCoversTheDPadInBothModes() {
+    let profile = Profile.standard
+    #expect(profile.action(for: RemoteKey(.up), in: .navigation) == .arrowUp)
+    #expect(profile.action(for: RemoteKey(.up), in: .pointer) == .pointerUp)
+    #expect(profile.action(for: RemoteKey(.select), in: .pointer) == .leftClick)
+    for mode in RemoteMode.allCases {
+        #expect(profile.action(for: RemoteKey(.menu), in: mode) == .toggleMode)
+    }
+}
+
+@Test func profileRoundTripsThroughJSON() throws {
+    var profile = Profile.standard
+    profile.set(.fullScreen, for: RemoteKey(.guide), in: .navigation)
+    profile.learn(RemoteKey(usage: .consumer(0x1A0)))
+    let data = try JSONEncoder().encode(profile)
+    let back = try JSONDecoder().decode(Profile.self, from: data)
+    #expect(back == profile)
+    #expect(back.keys.last == RemoteKey(usage: .consumer(0x1A0)))
+}
+
+@Test func learningKeepsExistingBindings() {
+    var profile = Profile.standard
+    profile.learn(RemoteKey(.up))
+    #expect(profile.action(for: RemoteKey(.up), in: .navigation) == .arrowUp)
+}
+
+@Test func holdBehavior() {
+    #expect(RemoteAction.pointerUp.hold == .continuous)
+    #expect(RemoteAction.scrollDown.hold == .continuous)
+    #expect(RemoteAction.arrowLeft.hold == .repeats)
+    #expect(RemoteAction.volumeUp.hold == .repeats)
+    #expect(RemoteAction.leftClick.hold == .once)
+    #expect(RemoteAction.switchApp.hold == .once)
+}
+
+@Test func nativeActionsMatchKeyboardBehavior() {
+    #expect(RemoteAction.native(for: .key(0x52)) == .arrowUp)
+    #expect(RemoteAction.native(for: .consumer(0xE9)) == .volumeUp)
+    #expect(RemoteAction.native(for: .consumer(0x224)) == nil)
+}
+
+@Test func pointerAcceleratesAndCaps() {
+    let motion = PointerMotion(baseSpeed: 100, maxSpeed: 1000, rampTime: 1)
+    #expect(motion.speed(heldFor: 0) == 100)
+    #expect(motion.speed(heldFor: 0.5) == 325)
+    #expect(motion.speed(heldFor: 5) == 1000)
+    #expect(PointerMotion(sliderValue: 1).maxSpeed > PointerMotion(sliderValue: 0).maxSpeed)
+}
+
+@Test func keyRepeatTiming() {
+    let rep = KeyRepeat(delay: 0.4, interval: 0.1)
+    #expect(rep.presses(heldFor: 0.1) == 1)
+    #expect(rep.presses(heldFor: 0.4) == 2)
+    #expect(rep.presses(heldFor: 0.65) == 4)
+}
+
+@Test func doubleClicks() {
+    var counter = ClickCounter(window: 0.4)
+    #expect(counter.click(at: 10) == 1)
+    #expect(counter.click(at: 10.2) == 2)
+    #expect(counter.click(at: 11) == 1)
+}

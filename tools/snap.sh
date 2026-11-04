@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Snapshots of every page in light and dark, with seed data, on a fresh test store.
 # Usage: tools/snap.sh            all pages
-#        APP_SNAPSHOT_PAGES=all,settings tools/snap.sh
+#        APP_SNAPSHOT_PAGES=remote,settings tools/snap.sh
 set -u
 app=~/Applications/MacRemote.app/Contents/MacOS/MacRemote
 store=/tmp/MacRemote-test.store

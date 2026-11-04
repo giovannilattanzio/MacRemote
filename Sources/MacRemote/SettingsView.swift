@@ -1,3 +1,4 @@
+import ServiceManagement
 import SwiftUI
 
 /// The Settings window (Command-Comma). One tab per topic, at most about
@@ -54,11 +55,39 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 }
 
 struct GeneralSettings: View {
-    @AppStorage("confirmDelete") private var confirmDelete = true
+    @AppStorage("pointerSpeed") private var pointerSpeed = 0.5
+    @AppStorage("scrollSpeed") private var scrollSpeed = 0.5
+    @AppStorage("showModeHUD") private var showModeHUD = true
+    @State private var openAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
-        Section("Items") {
-            Toggle("Ask before deleting items", isOn: $confirmDelete)
+        Section("Pointer") {
+            Slider(value: $pointerSpeed, in: 0...1) {
+                Text("Pointer speed")
+            } minimumValueLabel: {
+                Image(systemName: "tortoise")
+            } maximumValueLabel: {
+                Image(systemName: "hare")
+            }
+            Slider(value: $scrollSpeed, in: 0...1) {
+                Text("Scroll speed")
+            } minimumValueLabel: {
+                Image(systemName: "tortoise")
+            } maximumValueLabel: {
+                Image(systemName: "hare")
+            }
+        }
+        Section("General") {
+            Toggle("Show the mode on screen when it changes", isOn: $showModeHUD)
+            Toggle("Open at login", isOn: $openAtLogin)
+                .onChange(of: openAtLogin) { _, on in
+                    guard !Store.isOverridden else { return }
+                    do {
+                        if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+                    } catch {
+                        openAtLogin = SMAppService.mainApp.status == .enabled
+                    }
+                }
         }
     }
 }
