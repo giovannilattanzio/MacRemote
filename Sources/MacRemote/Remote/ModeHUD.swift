@@ -22,7 +22,7 @@ final class ModeHUD {
         panel.orderFrontRegardless()
         hideTask?.cancel()
         hideTask = Task {
-            try? await Task.sleep(for: .seconds(1.2))
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
             guard !Task.isCancelled else { return }
             await NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.25
@@ -53,7 +53,18 @@ struct ModeHUDView: View {
             .font(.title2.weight(.semibold))
             .padding(.horizontal, Space.xxl)
             .padding(.vertical, Space.lg)
-            .glassEffect(.regular, in: .capsule)
+            .modifier(HUDBackground())
             .padding(Space.xl)
+    }
+}
+
+/// Liquid Glass on macOS 26, a HUD material before it.
+private struct HUDBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content.glassEffect(.regular, in: .capsule)
+        } else {
+            content.background(.regularMaterial, in: Capsule())
+        }
     }
 }

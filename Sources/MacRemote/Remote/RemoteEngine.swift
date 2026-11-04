@@ -1,11 +1,11 @@
+import Combine
 import Foundation
 import MacRemoteKit
 
 /// Turns remote button presses into actions on the Mac: looks up the action
 /// for the button in the current mode, then runs it once, repeats it like a
 /// held key, or keeps moving the pointer while the button is down.
-@Observable
-final class RemoteEngine {
+final class RemoteEngine: ObservableObject {
     struct Press: Identifiable, Equatable {
         let id = UUID()
         let key: RemoteKey
@@ -17,13 +17,13 @@ final class RemoteEngine {
         let handledByMac: Bool
     }
 
-    var profile: Profile { didSet { save() } }
-    private(set) var mode: RemoteMode = .navigation
-    var isEnabled = true {
+    @Published var profile: Profile { didSet { save() } }
+    @Published private(set) var mode: RemoteMode = .navigation
+    @Published var isEnabled = true {
         didSet { if !isEnabled { releaseAll() } }
     }
     /// The newest first, at most 12.
-    private(set) var recent: [Press] = []
+    @Published private(set) var recent: [Press] = []
     var onModeChange: ((RemoteMode) -> Void)?
 
     /// 0 slow ... 1 fast, from Settings.

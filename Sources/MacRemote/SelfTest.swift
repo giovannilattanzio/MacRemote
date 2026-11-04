@@ -34,7 +34,7 @@ enum SelfTest {
             return
         }
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(0.3))
+            try? await Task.sleep(nanoseconds: 300_000_000)
             let recorder = Recorder()
             let engine = RemoteEngine(defaults: Store.defaults, sink: recorder)
             var now = 100.0

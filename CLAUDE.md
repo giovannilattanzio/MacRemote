@@ -29,35 +29,29 @@ know are learned by usage and show in the Buttons page.
 - Unit tests: `swift test --scratch-path ~/Library/Developer/MacRemote/test-build`.
 - Self-test (the app's real functions on a /tmp store): `tools/selftest.sh`. Exit 0 when every check passes. Add a check for every story with logic in `SelfTest.swift`.
 - After every UI change, take snapshots with sample data and look at them: `tools/snap.sh`.
-  It writes `/tmp/MacRemote-shots/<page>-light.png` and `-dark.png` for every sidebar page, and `settings-<tab>-light.png` and `-dark.png` for every Settings tab, then quits. `APP_SNAPSHOT_PAGES=remote,settings tools/snap.sh` limits the pages.
-  For a panel, sheet, or popover, add a capture to `Snapshot.swift` like the Settings loop.
+  It writes `/tmp/MacRemote-shots/<page>-light.png` and `-dark.png` for every sidebar page, and `settings-light.png` and `settings-dark.png`, then quits. `APP_SNAPSHOT_PAGES=remote,settings tools/snap.sh` limits the pages.
 - Snapshots, seed data, and the self-test refuse to run without `APP_STORE`. With it set, settings go to a throwaway defaults domain and no real remote is opened.
 - The self-test drives the real engine with simulated presses into a recorder; nothing is posted to the Mac.
 - Ad hoc builds lose Input Monitoring and Accessibility after every rebuild: remove MacRemote from both lists in Privacy & Security and add it again.
-- Then check the grid: `tools/grid-lint.sh` and `swift tools/check-layout.swift /tmp/MacRemote-shots/*-layout.json`. Both print PASS.
-- A change is done when the build has no errors, the grid checks pass, and you looked at the light and dark snapshots.
+- Then check the grid: `tools/grid-lint.sh` prints PASS.
+- A change is done when the build has no errors or warnings, the grid check passes, and you looked at the light and dark snapshots. Snapshots run on this Mac's macOS only: the macOS 12 guarantee comes from the compiler and the rules above.
 
 ## Design rules
 
-- Use Apple's controls and system styles. Only the accent color is custom: `UI/Theme.swift` (`ThemeStore.defaultID`). People change it, and light or dark mode, in Settings > Appearance.
-- Views use `.tint`, `Palette.accent`, `Palette.accentText` (accent-colored text), and `Palette.onAccent` (text on an accent fill). Never hard-code colors, radii, or durations in views.
-- Compare accents: add `APP_ACCENT=<id>` to the snapshot command.
-- Spacing comes from `Space` in `UI/Grid.swift`, on a 4 pt grid. Mark custom pages and cards with `.gridArea` and `.gridProbe`.
-- Windows open calm: `.noInitialFocus()` on every window and sheet (no focus ring or selected text on open), `.fitsContent()` on sheets and Settings tabs (no scroll bar with nothing to scroll). System scroll bars. Both in `UI/WindowBehavior.swift`.
-- Settings: one tab per topic in `SettingsView.swift`, one grouped Form per tab. Add a case to `SettingsTab` for a new tab.
-- Window chrome (title bar, toolbar, sidebar, menus, sheets) stays system. Buttons use system styles, like `.borderedProminent`.
-- Colors: `.primary`, `.secondary`, `.tint`, and system colors. Never fixed grays or white for text.
-- Every action has a menu bar item and a keyboard shortcut.
-- `Label` for icon and text pairs. SF Symbols for icons.
-- `ContentUnavailableView` for empty states.
-- Liquid Glass belongs to floating controls only, never to content.
+- **The app must run on macOS 12.7 and later.** `Package.swift` targets macOS 12, so the compiler rejects newer APIs. Wrap anything newer in `if #available(macOS 13, *)` (or 14, 26) with a macOS 12 fallback, as `SettingsView.swift` (login item) and `ModeHUD.swift` (Liquid Glass) do. Never raise the target.
+- Not available on macOS 12, do not use: `@Observable`/`@Bindable` (use `ObservableObject`/`@Published`), SwiftUI `Window`/`MenuBarExtra`/`openWindow`/`openSettings`, `NavigationSplitView`, `.formStyle(.grouped)`, `LabeledContent`, `ContentUnavailableView`, `Task.sleep(for:)` (use `nanoseconds:`), two-argument `onChange`, `SMAppService`.
+- The shell is AppKit (`Main.swift`, `Windows.swift`): the main window with an NSSplitViewController sidebar, the Settings window, the menu bar item, and the main menu. Pages are SwiftUI hosted in it.
+- Pages use the parts in `UI/Components.swift` (`Page`, `Card`, `CardDivider`, `Row`, `EmptyState`), so they look the same on every macOS version. Symbols go through `Symbol.named(_:)`, which falls back for symbols newer than macOS 12.
+- SwiftUI `Table` cells do not inherit environment objects: pass objects into cell views directly.
+- Spacing, radii, and widths come from `UI/Grid.swift` (`Space`, `Radius`, `Width`), on a 4 pt grid. Colors: `.primary`, `.secondary`, `.tint`, and system NSColors. The accent is the Mac's own.
+- Every action has a menu bar item and a keyboard shortcut (`Main.swift`).
+- Settings is called Preferences before macOS 13 (`AppDelegate.settingsTitle`).
 
 ## Skills
 
-The bama plugin has a skill for each step: `mac-design` (design rules),
-`design-system` (accent and tokens), `layout-grid`, `ux-design`,
-`swift-swiftui`, `os-integrations`, `performance`, `build-and-verify`,
-`test-mac-app`, `app-icon`, `user-stories`, and `improve-loop`. Use them.
+The bama plugin has a skill for each step (`mac-design`, `swift-swiftui`,
+`os-integrations`, `build-and-verify`, `test-mac-app`, and more). Their
+advice assumes macOS 26: where it uses a newer API, the macOS 12 rule above wins.
 
 ## Git
 

@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import IOKit.hid
 import MacRemoteKit
@@ -6,8 +7,7 @@ import MacRemoteKit
 /// Fire TV remotes are used automatically; any other keyboard-like device
 /// can be turned on in Devices. Devices in use are seized, so their buttons
 /// reach only this app and not the system as key presses.
-@Observable
-final class HIDMonitor {
+final class HIDMonitor: ObservableObject {
     struct Device: Identifiable, Equatable {
         let id: String
         var name: String
@@ -22,7 +22,12 @@ final class HIDMonitor {
         var isSeized = false
     }
 
-    private(set) var devices: [Device] = []
+    @Published private(set) var devices: [Device] = []
+
+    /// The name of the first connected remote in use, for status lines.
+    var activeRemoteName: String? {
+        devices.first { $0.isEnabled && $0.isOpen }?.name
+    }
     var onInput: ((HIDUsage, Bool, Device) -> Void)?
 
     private let defaults: UserDefaults

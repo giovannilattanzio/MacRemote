@@ -1,7 +1,7 @@
 # MacRemote
 
 Control a Mac with a Bluetooth remote, starting with Amazon Fire TV remotes.
-Requires macOS 26 or later. Runs on Apple silicon and Intel Macs.
+Requires macOS 12.7 (Monterey) or later. Runs on Apple silicon and Intel Macs.
 
 ## Make a copy for other Macs
 
@@ -32,12 +32,12 @@ NOTARY_PROFILE=macremote tools/release.sh
 
 1. Unzip, and drag **MacRemote** into **Applications**.
 2. Open it. If macOS says it cannot verify the app, click **Done**, then open
-   **System Settings > Privacy & Security**, scroll down, and click **Open Anyway**
+   **System Settings > Privacy & Security** (on macOS 12: **System Preferences > Security & Privacy > General**), and click **Open Anyway**
    next to MacRemote. Confirm with your password. This is needed once.
 3. In MacRemote, click **Allow…** for **Input Monitoring** and **Accessibility**,
    and switch MacRemote on in both lists.
 4. Pair the remote: unplug its Fire TV, hold **Home** on the remote for about
-   10 seconds, then click **Connect** in **System Settings > Bluetooth**.
+   10 seconds, then click **Connect** in Bluetooth settings.
    If the Keyboard Setup Assistant opens, close it.
 
 Permissions stay granted on that Mac as long as you keep the same copy. Installing a

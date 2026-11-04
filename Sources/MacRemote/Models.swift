@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import MacRemoteKit
 
@@ -24,9 +25,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     }
 }
 
-/// App-wide state that menus, toolbars, and views share.
-@Observable
-final class AppModel {
+/// App-wide state that menus, windows, and views share.
+final class AppModel: ObservableObject {
     static let shared = AppModel()
 
     let engine: RemoteEngine
@@ -34,11 +34,7 @@ final class AppModel {
     let permissions = Permissions()
     let hud = ModeHUD()
 
-    var sidebar: SidebarItem? = .remote
-    /// Settings reopens on the last tab. Test and snapshot runs leave it alone.
-    var settingsTab: SettingsTab = SettingsTab(rawValue: UserDefaults.standard.string(forKey: "settings.tab") ?? "") ?? .general {
-        didSet { if !Store.isOverridden { UserDefaults.standard.set(settingsTab.rawValue, forKey: "settings.tab") } }
-    }
+    @Published var sidebar: SidebarItem = .remote
 
     init(sink: EffectSink = EventSynth()) {
         engine = RemoteEngine(defaults: Store.defaults, sink: sink)
@@ -57,15 +53,27 @@ final class AppModel {
             SampleData.fill(self)
         }
         guard !Store.isOverridden else { return }
-        permissions.refresh()
         permissions.onChange = { [monitor, permissions] in
             if permissions.inputMonitoring { monitor.start() }
         }
+        permissions.refresh()
         if permissions.inputMonitoring { monitor.start() }
     }
+}
 
-    /// The name of the first connected remote in use, for status lines.
-    var activeRemoteName: String? {
-        monitor.devices.first { $0.isEnabled && $0.isOpen }?.name
+/// Where settings live. Test, snapshot, and self-test runs use a throwaway
+/// domain and never touch the real settings or a real remote.
+enum Store {
+    /// True when APP_STORE is set (tests, snapshots, seed data).
+    static var isOverridden: Bool {
+        !(ProcessInfo.processInfo.environment["APP_STORE"] ?? "").isEmpty
     }
+
+    static let defaults: UserDefaults = {
+        guard isOverridden else { return .standard }
+        let suite = "com.gilattanzio.macremote.test"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        return defaults
+    }()
 }

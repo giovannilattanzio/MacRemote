@@ -1,93 +1,69 @@
 import ServiceManagement
 import SwiftUI
 
-/// The Settings window (Command-Comma). One tab per topic, at most about
-/// six. Each tab is a grouped Form that sizes to its content, so the
-/// window grows to fit and shows no scroll bar it does not need.
+/// The Settings window's one page. Sized to its content.
 struct SettingsView: View {
-    @Environment(AppModel.self) private var model
+    @AppStorage("pointerSpeed", store: Store.defaults) private var pointerSpeed = 0.5
+    @AppStorage("scrollSpeed", store: Store.defaults) private var scrollSpeed = 0.5
+    @AppStorage("showModeHUD", store: Store.defaults) private var showModeHUD = true
 
     var body: some View {
-        @Bindable var model = model
-        TabView(selection: $model.settingsTab) {
-            ForEach(SettingsTab.allCases) { tab in
-                page(tab)
-                    .tabItem { Label(tab.title, systemImage: tab.symbol) }
-                    .tag(tab)
+        VStack(alignment: .leading, spacing: Space.xxl) {
+            Card(title: "Pointer") {
+                Row(title: "Pointer speed") { speed($pointerSpeed) }
+                CardDivider()
+                Row(title: "Scroll speed") { speed($scrollSpeed) }
             }
-        }
-        .noInitialFocus()
-    }
-
-    @ViewBuilder
-    private func page(_ tab: SettingsTab) -> some View {
-        Form {
-            switch tab {
-            case .general: GeneralSettings()
-            case .appearance: AppearanceSettings()
-            }
-        }
-        .formStyle(.grouped)
-        .fitsContent()
-        .frame(width: 520)
-    }
-}
-
-/// The Settings tabs. Snapshot mode walks through every case.
-enum SettingsTab: String, CaseIterable, Identifiable {
-    case general, appearance
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .general: "General"
-        case .appearance: "Appearance"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .general: "gearshape"
-        case .appearance: "paintpalette"
-        }
-    }
-}
-
-struct GeneralSettings: View {
-    @AppStorage("pointerSpeed") private var pointerSpeed = 0.5
-    @AppStorage("scrollSpeed") private var scrollSpeed = 0.5
-    @AppStorage("showModeHUD") private var showModeHUD = true
-    @State private var openAtLogin = SMAppService.mainApp.status == .enabled
-
-    var body: some View {
-        Section("Pointer") {
-            Slider(value: $pointerSpeed, in: 0...1) {
-                Text("Pointer speed")
-            } minimumValueLabel: {
-                Image(systemName: "tortoise")
-            } maximumValueLabel: {
-                Image(systemName: "hare")
-            }
-            Slider(value: $scrollSpeed, in: 0...1) {
-                Text("Scroll speed")
-            } minimumValueLabel: {
-                Image(systemName: "tortoise")
-            } maximumValueLabel: {
-                Image(systemName: "hare")
-            }
-        }
-        Section("General") {
-            Toggle("Show the mode on screen when it changes", isOn: $showModeHUD)
-            Toggle("Open at login", isOn: $openAtLogin)
-                .onChange(of: openAtLogin) { _, on in
-                    guard !Store.isOverridden else { return }
-                    do {
-                        if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
-                    } catch {
-                        openAtLogin = SMAppService.mainApp.status == .enabled
-                    }
+            Card(title: "General") {
+                Row(title: "Show the mode on screen when it changes") {
+                    Toggle("Show the mode on screen", isOn: $showModeHUD)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
                 }
+                CardDivider()
+                OpenAtLoginRow()
+            }
+        }
+        .padding(Space.margin)
+        .frame(width: Width.settings)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func speed(_ value: Binding<Double>) -> some View {
+        Slider(value: value, in: 0...1) {
+            EmptyView()
+        } minimumValueLabel: {
+            Image(systemName: "tortoise")
+        } maximumValueLabel: {
+            Image(systemName: "hare")
+        }
+        .frame(width: Width.settings / 2)
+    }
+}
+
+/// A login item needs SMAppService (macOS 13). On macOS 12 the row says where to add it by hand.
+private struct OpenAtLoginRow: View {
+    @State private var on = false
+
+    var body: some View {
+        if #available(macOS 13, *) {
+            Row(title: "Open at login") {
+                Toggle("Open at login", isOn: $on)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .onAppear { on = SMAppService.mainApp.status == .enabled }
+                    .onChange(of: on) { wanted in
+                        guard !Store.isOverridden, wanted != (SMAppService.mainApp.status == .enabled) else { return }
+                        do {
+                            if wanted { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+                        } catch {
+                            on = SMAppService.mainApp.status == .enabled
+                        }
+                    }
+            }
+        } else {
+            Row(title: "Open at login",
+                subtitle: "Add MacRemote in System Preferences > Users & Groups > Login Items.")
         }
     }
 }

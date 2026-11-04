@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import ApplicationServices
 import IOKit.hid
 
@@ -7,10 +8,9 @@ import IOKit.hid
 /// - Accessibility, to press keys and move the pointer.
 /// macOS gives no notice when one is granted, so the app checks every two
 /// seconds until both are on.
-@Observable
-final class Permissions {
-    private(set) var inputMonitoring = false
-    private(set) var accessibility = false
+final class Permissions: ObservableObject {
+    @Published private(set) var inputMonitoring = false
+    @Published private(set) var accessibility = false
     var onChange: (() -> Void)?
     private var timer: Timer?
 
