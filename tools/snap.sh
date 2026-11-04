@@ -3,7 +3,7 @@
 # Usage: tools/snap.sh            all pages
 #        APP_SNAPSHOT_PAGES=remote,settings tools/snap.sh
 set -u
-app=~/Applications/MacRemote.app/Contents/MacOS/MacRemote
+app=/Applications/MacRemote.app/Contents/MacOS/MacRemote
 store=/tmp/MacRemote-test.store
 shots=/tmp/MacRemote-shots
 # A crashed run leaves saved window state, and the next launch would wait on a "reopen windows?" alert.

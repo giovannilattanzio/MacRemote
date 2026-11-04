@@ -4,4 +4,4 @@ set -u
 rm -rf ~/Library/Saved\ Application\ State/com.gilattanzio.macremote.savedState
 store=/tmp/MacRemote-self.store
 rm -f $store $store-shm $store-wal
-APP_STORE=$store ~/Applications/MacRemote.app/Contents/MacOS/MacRemote --selftest
+APP_STORE=$store /Applications/MacRemote.app/Contents/MacOS/MacRemote --selftest

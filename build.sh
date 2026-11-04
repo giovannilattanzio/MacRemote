@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds MacRemote and installs it to ~/Applications/MacRemote.app.
+# Builds MacRemote and installs it to /Applications/MacRemote.app.
 # Build products live in ~/Library/Developer/MacRemote, outside the repo
 # (and outside Dropbox or iCloud, which would try to sync them).
 #
@@ -32,8 +32,8 @@ if [[ -n "$stale" ]]; then
   exit 1
 fi
 
-app="$HOME/Applications/$name.app"
-mkdir -p "$HOME/Applications"
+app="/Applications/$name.app"
+
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin" "$app/Contents/MacOS/$name"

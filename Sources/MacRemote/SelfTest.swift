@@ -4,7 +4,7 @@ import MacRemoteKit
 /// Self-test for agents: drives the real engine with simulated remote
 /// presses into a recording sink, prints PASS or FAIL per check, and quits
 /// with exit code 0 or 1. Nothing reaches the real Mac.
-///   APP_STORE=/tmp/MacRemote-self ~/Applications/MacRemote.app/Contents/MacOS/MacRemote --selftest
+///   APP_STORE=/tmp/MacRemote-self /Applications/MacRemote.app/Contents/MacOS/MacRemote --selftest
 /// (tools/selftest.sh does this.) Add a check for every story with logic.
 @MainActor
 enum SelfTest {
