@@ -12,17 +12,17 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
     init(model: AppModel) {
         self.model = model
         let split = NSSplitViewController()
-        let sidebar = NSSplitViewItem(sidebarWithViewController: NSHostingController(
-            rootView: SidebarView().environmentObject(model)))
+        let sidebar = NSSplitViewItem(sidebarWithViewController: BelowTitlebar.wrap(NSHostingController(
+            rootView: SidebarView().environmentObject(model))))
         sidebar.minimumThickness = Width.sidebar - Space.xl
         sidebar.maximumThickness = Width.sidebar + Space.section + Space.lg
         sidebar.canCollapse = true
-        let detail = NSSplitViewItem(viewController: NSHostingController(
+        let detail = NSSplitViewItem(viewController: BelowTitlebar.wrap(NSHostingController(
             rootView: DetailView()
                 .environmentObject(model)
                 .environmentObject(model.engine)
                 .environmentObject(model.monitor)
-                .environmentObject(model.permissions)))
+                .environmentObject(model.permissions))))
         split.addSplitViewItem(sidebar)
         split.addSplitViewItem(detail)
 
@@ -70,6 +70,55 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier id: NSToolbarItem.Identifier,
                  willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? { nil }
+}
+
+/// On macOS 12 a SwiftUI view hosted in a full-size-content window ignores the
+/// title bar, so the sidebar rows sit under the traffic lights. There the view
+/// is pinned below the title bar and toolbar (the window's content layout guide).
+/// macOS 13 and later lay it out correctly, so the controller is used as is.
+final class BelowTitlebar: NSViewController {
+    private let content: NSViewController
+    private var top: NSLayoutConstraint?
+
+    static func wrap(_ content: NSViewController) -> NSViewController {
+        if #available(macOS 13, *) { return content }
+        return BelowTitlebar(content)
+    }
+
+    private init(_ content: NSViewController) {
+        self.content = content
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func loadView() { view = NSView() }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        addChild(content)
+        let inner = content.view
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(inner)
+        let top = inner.topAnchor.constraint(equalTo: view.topAnchor)
+        self.top = top
+        NSLayoutConstraint.activate([
+            top,
+            inner.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            inner.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            inner.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+    }
+
+    override func viewWillAppear() {
+        super.viewWillAppear()
+        guard let guide = view.window?.contentLayoutGuide as? NSLayoutGuide else { return }
+        top?.isActive = false
+        let below = content.view.topAnchor.constraint(equalTo: guide.topAnchor)
+        below.isActive = true
+        top = below
+    }
 }
 
 /// The Settings window (Command-Comma), one page. Called Preferences before macOS 13.
