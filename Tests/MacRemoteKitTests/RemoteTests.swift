@@ -184,14 +184,14 @@ func batterySymbols(_ percent: Int, symbol: String, low: Bool) {
 @Test func remotesPresentAtStartDoNotNotify() {
     var watch = ConnectionWatch(start: 0)
     #expect(watch.connected(id: "a", name: "Remote", at: 1) == nil)
-    #expect(watch.connected(id: "b", name: "Remote", at: 5) == ConnectionNotice(.connected, name: "Remote"))
+    #expect(watch.connected(id: "b", name: "Remote", at: 5) == RemoteNotice(.connected, name: "Remote"))
 }
 
 @Test func disconnectsNotifyAfterSettling() {
     var watch = ConnectionWatch(start: 0)
     watch.disconnected(id: "a", name: "Remote", at: 10)
     #expect(watch.due(at: 11).isEmpty)
-    #expect(watch.due(at: 13) == [ConnectionNotice(.disconnected, name: "Remote")])
+    #expect(watch.due(at: 13) == [RemoteNotice(.disconnected, name: "Remote")])
     #expect(watch.due(at: 20).isEmpty)
 }
 
@@ -200,4 +200,26 @@ func batterySymbols(_ percent: Int, symbol: String, low: Bool) {
     watch.disconnected(id: "a", name: "Remote", at: 10)
     #expect(watch.connected(id: "a", name: "Remote", at: 11) == nil)
     #expect(watch.due(at: 20).isEmpty)
+}
+
+@Test func lowBatteryNotifiesOnce() {
+    var watch = BatteryWatch()
+    #expect(watch.reading(id: "a", name: "Remote", battery: Battery(percent: 50)!) == nil)
+    #expect(watch.reading(id: "a", name: "Remote", battery: Battery(percent: 20)!)
+        == RemoteNotice(.lowBattery(20), name: "Remote"))
+    #expect(watch.reading(id: "a", name: "Remote", battery: Battery(percent: 15)!) == nil)
+    // A small bounce up and down again stays quiet.
+    #expect(watch.reading(id: "a", name: "Remote", battery: Battery(percent: 25)!) == nil)
+    #expect(watch.reading(id: "a", name: "Remote", battery: Battery(percent: 18)!) == nil)
+    // Another remote has its own warning.
+    #expect(watch.reading(id: "b", name: "Other", battery: Battery(percent: 10)!)
+        == RemoteNotice(.lowBattery(10), name: "Other"))
+}
+
+@Test func newBatteriesRearmTheWarning() {
+    var watch = BatteryWatch()
+    _ = watch.reading(id: "a", name: "Remote", battery: Battery(percent: 10)!)
+    #expect(watch.reading(id: "a", name: "Remote", battery: Battery(percent: 100)!) == nil)
+    #expect(watch.reading(id: "a", name: "Remote", battery: Battery(percent: 19)!)
+        == RemoteNotice(.lowBattery(19), name: "Remote"))
 }

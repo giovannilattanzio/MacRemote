@@ -33,7 +33,7 @@ final class AppModel: ObservableObject {
     let monitor: HIDMonitor
     let permissions = Permissions()
     let hud = ModeHUD()
-    let notifier = ConnectionNotifier(defaults: Store.defaults)
+    let notifier = RemoteNotifier(defaults: Store.defaults)
 
     @Published var sidebar: SidebarItem = .remote
     /// Keeps App Nap away. A napping app gets its timers slowed to seconds,
@@ -49,6 +49,7 @@ final class AppModel: ObservableObject {
         monitor.onConnection = { [notifier] device, connected in
             notifier.connection(device, connected: connected)
         }
+        monitor.onBattery = { [notifier] device in notifier.battery(device) }
         engine.onModeChange = { [hud] mode in
             if Store.defaults.object(forKey: "showModeHUD") as? Bool ?? true { hud.show(mode) }
         }

@@ -2,18 +2,21 @@ import Foundation
 import MacRemoteKit
 import UserNotifications
 
-/// Posts a notification when a remote in use connects or disconnects,
-/// unless turned off in Settings. ConnectionWatch decides which events count.
+/// Posts a notification when a remote in use connects or disconnects, or its
+/// battery runs low, unless turned off in Settings. ConnectionWatch and
+/// BatteryWatch decide which events count.
 /// Clicking a notification opens the main window.
-final class ConnectionNotifier: NSObject {
-    /// The Settings switch.
+final class RemoteNotifier: NSObject {
+    /// The Settings switches.
     static let settingKey = "notifyConnections"
+    static let batterySettingKey = "notifyLowBattery"
 
     /// Where notices go. The app posts to Notification Center; the self-test records them.
-    var post: (ConnectionNotice) -> Void
+    var post: (RemoteNotice) -> Void
     var onOpen: (() -> Void)?
 
     private var watch: ConnectionWatch
+    private var batteryWatch = BatteryWatch()
     private let clock: () -> TimeInterval
     private let defaults: UserDefaults
 
@@ -27,6 +30,15 @@ final class ConnectionNotifier: NSObject {
     }
 
     var isOn: Bool { defaults.object(forKey: Self.settingKey) as? Bool ?? true }
+    var isBatteryOn: Bool { defaults.object(forKey: Self.batterySettingKey) as? Bool ?? true }
+
+    /// A remote in use reported its charge.
+    func battery(_ device: HIDMonitor.Device) {
+        guard let battery = device.battery,
+              let notice = batteryWatch.reading(id: device.id, name: device.name, battery: battery),
+              isBatteryOn else { return }
+        post(notice)
+    }
 
     func connection(_ device: HIDMonitor.Device, connected: Bool) {
         if connected {
@@ -62,7 +74,7 @@ final class ConnectionNotifier: NSObject {
     }
 }
 
-extension ConnectionNotifier: UNUserNotificationCenterDelegate {
+extension RemoteNotifier: UNUserNotificationCenterDelegate {
     /// Shows the banner even while MacRemote is the frontmost app.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
                                             withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {

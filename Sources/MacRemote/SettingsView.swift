@@ -6,7 +6,8 @@ struct SettingsView: View {
     @AppStorage("pointerSpeed", store: Store.defaults) private var pointerSpeed = 0.5
     @AppStorage("scrollSpeed", store: Store.defaults) private var scrollSpeed = 0.5
     @AppStorage("showModeHUD", store: Store.defaults) private var showModeHUD = true
-    @AppStorage(ConnectionNotifier.settingKey, store: Store.defaults) private var notifyConnections = true
+    @AppStorage(RemoteNotifier.settingKey, store: Store.defaults) private var notifyConnections = true
+    @AppStorage(RemoteNotifier.batterySettingKey, store: Store.defaults) private var notifyLowBattery = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xxl) {
@@ -24,6 +25,12 @@ struct SettingsView: View {
                 CardDivider()
                 Row(title: "Notify when a remote connects or disconnects") {
                     Toggle("Notify when a remote connects or disconnects", isOn: $notifyConnections)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                CardDivider()
+                Row(title: "Notify when a remote's battery is low") {
+                    Toggle("Notify when a remote's battery is low", isOn: $notifyLowBattery)
                         .toggleStyle(.switch)
                         .labelsHidden()
                 }

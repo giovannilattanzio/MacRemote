@@ -1,8 +1,12 @@
 import Foundation
 
-/// A notification that a remote came or went.
-public struct ConnectionNotice: Equatable, Sendable {
-    public enum Kind: Sendable { case connected, disconnected }
+/// A notification about a remote: it came, went, or its battery is low.
+public struct RemoteNotice: Equatable, Sendable {
+    public enum Kind: Equatable, Sendable {
+        case connected, disconnected
+        /// The charge left, in percent.
+        case lowBattery(Int)
+    }
 
     public let kind: Kind
     public let name: String
@@ -16,6 +20,7 @@ public struct ConnectionNotice: Equatable, Sendable {
         switch kind {
         case .connected: "\(name) Connected"
         case .disconnected: "\(name) Disconnected"
+        case .lowBattery: "\(name) Battery Low"
         }
     }
 
@@ -23,6 +28,7 @@ public struct ConnectionNotice: Equatable, Sendable {
         switch kind {
         case .connected: "The remote is ready to control your Mac."
         case .disconnected: "Press a button on the remote to reconnect it."
+        case .lowBattery(let percent): "\(percent)% left. Replace the remote's batteries soon."
         }
     }
 }
@@ -48,10 +54,10 @@ public struct ConnectionWatch: Sendable {
     }
 
     /// A remote connected. Returns the notice to show, if any.
-    public mutating func connected(id: String, name: String, at now: TimeInterval) -> ConnectionNotice? {
+    public mutating func connected(id: String, name: String, at now: TimeInterval) -> RemoteNotice? {
         if pending.removeValue(forKey: id) != nil { return nil }
         guard now - start >= startQuiet else { return nil }
-        return ConnectionNotice(.connected, name: name)
+        return RemoteNotice(.connected, name: name)
     }
 
     /// A remote disconnected. Its notice waits `settle` seconds; collect it with `due(at:)`.
@@ -60,9 +66,9 @@ public struct ConnectionWatch: Sendable {
     }
 
     /// Disconnects that stayed disconnected for `settle` seconds, oldest first.
-    public mutating func due(at now: TimeInterval) -> [ConnectionNotice] {
+    public mutating func due(at now: TimeInterval) -> [RemoteNotice] {
         let ready = pending.filter { now - $0.value.at >= settle }.sorted { $0.value.at < $1.value.at }
         for (id, _) in ready { pending[id] = nil }
-        return ready.map { ConnectionNotice(.disconnected, name: $0.value.name) }
+        return ready.map { RemoteNotice(.disconnected, name: $0.value.name) }
     }
 }

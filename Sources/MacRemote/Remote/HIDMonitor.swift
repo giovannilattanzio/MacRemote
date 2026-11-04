@@ -42,6 +42,8 @@ final class HIDMonitor: ObservableObject {
     var onInput: ((HIDUsage, Bool, Device) -> Void)?
     /// A remote in use appeared (true) or went away (false).
     var onConnection: ((Device, Bool) -> Void)?
+    /// A remote in use reported a new charge.
+    var onBattery: ((Device) -> Void)?
 
     private let defaults: UserDefaults
     private var manager: IOHIDManager?
@@ -183,6 +185,7 @@ final class HIDMonitor: ObservableObject {
               devices[index].battery != battery else { return }
         devices[index].battery = battery
         log.notice("battery \(id, privacy: .public) \(battery.percent)%")
+        if devices[index].isEnabled { onBattery?(devices[index]) }
     }
 
     private func property(_ device: IOHIDDevice, _ key: String) -> Any? {

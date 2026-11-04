@@ -101,9 +101,9 @@ enum SelfTest {
             engine.restoreDefaults()
             check("Restore Defaults resets buttons", engine.profile == .standard)
 
-            var notices: [ConnectionNotice] = []
+            var notices: [RemoteNotice] = []
             var uptime = 0.0
-            let notifier = ConnectionNotifier(defaults: Store.defaults, settle: 0.1, startQuiet: 1, clock: { uptime })
+            let notifier = RemoteNotifier(defaults: Store.defaults, settle: 0.1, startQuiet: 1, clock: { uptime })
             notifier.post = { notices.append($0) }
             let remote = HIDMonitor.Device(id: "r", name: "Test Remote", vendorID: 0x1949, productID: 1,
                                            transport: "Bluetooth", isFireTV: true, isEnabled: true)
@@ -111,7 +111,7 @@ enum SelfTest {
             check("a remote already connected at launch does not notify", notices.isEmpty)
             uptime = 5
             notifier.connection(remote, connected: true)
-            check("connecting a remote notifies", notices == [ConnectionNotice(.connected, name: "Test Remote")])
+            check("connecting a remote notifies", notices == [RemoteNotice(.connected, name: "Test Remote")])
             notices = []
             notifier.connection(remote, connected: false)
             notifier.connection(remote, connected: true)
@@ -121,12 +121,28 @@ enum SelfTest {
             notifier.connection(remote, connected: false)
             uptime = 7
             try? await Task.sleep(nanoseconds: 300_000_000)
-            check("disconnecting a remote notifies", notices == [ConnectionNotice(.disconnected, name: "Test Remote")], "\(notices)")
+            check("disconnecting a remote notifies", notices == [RemoteNotice(.disconnected, name: "Test Remote")], "\(notices)")
             notices = []
-            Store.defaults.set(false, forKey: ConnectionNotifier.settingKey)
+            Store.defaults.set(false, forKey: RemoteNotifier.settingKey)
             notifier.connection(remote, connected: true)
             check("with notifications off, nothing is posted", notices.isEmpty)
-            Store.defaults.removeObject(forKey: ConnectionNotifier.settingKey)
+            Store.defaults.removeObject(forKey: RemoteNotifier.settingKey)
+
+            var low = remote
+            low.battery = Battery(percent: 15)
+            notifier.battery(low)
+            check("a low battery notifies", notices == [RemoteNotice(.lowBattery(15), name: "Test Remote")], "\(notices)")
+            notices = []
+            low.battery = Battery(percent: 12)
+            notifier.battery(low)
+            check("a battery already reported low does not notify again", notices.isEmpty, "\(notices)")
+            low.battery = Battery(percent: 100)
+            notifier.battery(low)
+            Store.defaults.set(false, forKey: RemoteNotifier.batterySettingKey)
+            low.battery = Battery(percent: 10)
+            notifier.battery(low)
+            check("with low battery notifications off, nothing is posted", notices.isEmpty, "\(notices)")
+            Store.defaults.removeObject(forKey: RemoteNotifier.batterySettingKey)
 
             print(failures == 0 ? "SELFTEST PASS \(count) checks" : "SELFTEST FAIL \(failures) of \(count) checks")
             finish(code: failures == 0 ? 0 : 1)
