@@ -5,7 +5,7 @@ starting with Amazon Fire TV (Alexa Voice) remotes. It lives in the window
 and the menu bar; settings and button choices are in UserDefaults.
 
 How it works: `Remote/HIDMonitor.swift` finds HID devices (IOHIDManager),
-opens Fire TV remotes (vendor 0x1949 or name match) exclusively when it can,
+opens Fire TV remotes (vendor 0x1949 or name match) exclusively when it can (keyboard-class remotes usually cannot be seized, so they stay shared with macOS),
 and reports (usage page, usage, pressed). `Remote/RemoteEngine.swift` looks
 the button up in the `Profile` for the current mode (Navigation or Pointer)
 and runs it once, repeats it, or keeps moving the pointer while held.
@@ -15,7 +15,7 @@ know are learned by usage and show in the Buttons page.
 
 ## Layout
 
-- `Sources/MacRemote/` the app. `App.swift` has the window, menu bar item, menus, and where settings live.
+- `Sources/MacRemote/` the app. `Main.swift` has the app delegate and menus, `Windows.swift` the windows and menu bar item, `Models.swift` where settings live.
 - `Sources/MacRemoteKit/` rules and data logic with no SwiftUI. Tests in `Tests/MacRemoteKitTests/`.
 - `Package.swift` a Swift package. There is no Xcode project.
 - `build.sh` builds, signs, and installs `/Applications/MacRemote.app`.
