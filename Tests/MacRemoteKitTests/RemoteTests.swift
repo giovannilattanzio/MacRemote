@@ -8,6 +8,8 @@ import Testing
     (HIDUsage.key(0x28), RemoteButton.select),
     (HIDUsage.consumer(0x41), RemoteButton.select),
     (HIDUsage.consumer(0x224), RemoteButton.back),
+    (HIDUsage.key(0xF1), RemoteButton.back),
+    (HIDUsage.key(0x58), RemoteButton.select),
     (HIDUsage.consumer(0x223), RemoteButton.home),
     (HIDUsage.consumer(0x40), RemoteButton.menu),
     (HIDUsage.consumer(0xCD), RemoteButton.playPause),
@@ -33,6 +35,7 @@ func resolves(_ usage: HIDUsage, button: RemoteButton) {
     #expect(!HIDUsage.consumer(0x01).isButton)
     #expect(HIDUsage.key(0x52).isButton)
     #expect(HIDUsage.consumer(0x224).isButton)
+    #expect(HIDUsage.key(0xF1).isButton)
 }
 
 @Test func recognizesFireTVRemotes() {
@@ -78,7 +81,8 @@ func resolves(_ usage: HIDUsage, button: RemoteButton) {
 
 @Test func nativeActionsMatchKeyboardBehavior() {
     #expect(RemoteAction.native(for: .key(0x52)) == .arrowUp)
-    #expect(RemoteAction.native(for: .consumer(0xE9)) == .volumeUp)
+    #expect(RemoteAction.native(for: .key(0x58)) == .returnKey)
+    #expect(RemoteAction.native(for: .consumer(0xCD)) == nil)
     #expect(RemoteAction.native(for: .consumer(0x224)) == nil)
 }
 

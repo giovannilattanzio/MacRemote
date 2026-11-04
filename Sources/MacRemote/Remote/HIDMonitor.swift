@@ -40,6 +40,9 @@ final class HIDMonitor: ObservableObject {
     /// Last state of each button of each device. A remote that shows up as
     /// several HID devices reports one press on each; only the first counts.
     private var buttonState: [String: Bool] = [:]
+    /// The one IOHIDDevice per device id whose reports count. macOS lists a
+    /// Fire TV remote twice, and the copies do not always arrive interleaved.
+    private var owner: [String: ObjectIdentifier] = [:]
     /// Every raw value from a remote in use, for diagnosing new remotes:
     ///   log stream --level info --predicate 'subsystem == "com.gilattanzio.macremote"'
     private let log = Logger(subsystem: "com.gilattanzio.macremote", category: "hid")
@@ -134,6 +137,7 @@ final class HIDMonitor: ObservableObject {
         let id = identity(of: device)
         opened.remove(ObjectIdentifier(device))
         seizedRefs.remove(ObjectIdentifier(device))
+        if owner[id] == ObjectIdentifier(device) { owner[id] = nil }
         refs[id]?.removeAll { $0 === device }
         if refs[id]?.isEmpty ?? true {
             refs[id] = nil
@@ -198,6 +202,7 @@ final class HIDMonitor: ObservableObject {
             opened.remove(ObjectIdentifier(device))
             seizedRefs.remove(ObjectIdentifier(device))
         }
+        owner[id] = nil
         updateStatus(id)
     }
 
@@ -207,6 +212,9 @@ final class HIDMonitor: ObservableObject {
         let id = identity(of: device)
         guard let info = devices.first(where: { $0.id == id }), info.isEnabled else { return }
         log.info("raw \(String(format: "%02X:%04X", page, usage), privacy: .public) value=\(value) array=\(isArray) ref=\(UInt(bitPattern: ObjectIdentifier(device).hashValue))")
+        let ref = ObjectIdentifier(device)
+        if owner[id] == nil { owner[id] = ref }
+        guard owner[id] == ref else { return }
         if isArray {
             // Array reports carry the pressed usage as the value, and 0 on release.
             let slot = "\(id)/\(page)"

@@ -24,9 +24,10 @@ public struct HIDUsage: Hashable, Codable, Sendable, CustomStringConvertible {
 
     /// True for usages that are real buttons. Keyboard reports carry
     /// placeholder usages (0x00-0x03 and the array slot 0xFFFFFFFF) that are not.
+    /// Fire TV remotes send Back as keyboard usage 0xF1, above the standard keys.
     public var isButton: Bool {
         switch page {
-        case Self.keyboardPage: (0x04...0xE7).contains(usage)
+        case Self.keyboardPage: (0x04...0xFF).contains(usage)
         case Self.consumerPage: usage != 0 && usage != 0x01 && usage != 0xFFFF_FFFF
         case Self.genericDesktopPage: (0x81...0x93).contains(usage)
         default: page >= 0x09 && usage != 0xFFFF_FFFF

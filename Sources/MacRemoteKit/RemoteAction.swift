@@ -165,7 +165,8 @@ public enum RemoteAction: String, CaseIterable, Codable, Sendable, Identifiable 
 
     /// What macOS itself does with a usage when the app cannot take the
     /// remote for itself: the remote then behaves as a keyboard, and posting
-    /// the same action again would do it twice.
+    /// the same action again would do it twice. Only keyboard keys: macOS
+    /// does not act on a Fire TV remote's media buttons (tested on macOS 26).
     public static func native(for usage: HIDUsage) -> RemoteAction? {
         switch (usage.page, usage.usage) {
         case (HIDUsage.keyboardPage, 0x52): .arrowUp
@@ -177,12 +178,6 @@ public enum RemoteAction: String, CaseIterable, Codable, Sendable, Identifiable 
         case (HIDUsage.keyboardPage, 0x2C): .space
         case (HIDUsage.keyboardPage, 0x2B): .tab
         case (HIDUsage.keyboardPage, 0x2A): .delete
-        case (HIDUsage.consumerPage, 0xCD): .playPause
-        case (HIDUsage.consumerPage, 0xB5): .nextTrack
-        case (HIDUsage.consumerPage, 0xB6): .previousTrack
-        case (HIDUsage.consumerPage, 0xE9): .volumeUp
-        case (HIDUsage.consumerPage, 0xEA): .volumeDown
-        case (HIDUsage.consumerPage, 0xE2): .mute
         default: nil
         }
     }
