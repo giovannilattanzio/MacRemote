@@ -19,6 +19,7 @@ know are learned by usage and show in the Buttons page.
 - `Sources/MacRemoteKit/` rules and data logic with no SwiftUI. Tests in `Tests/MacRemoteKitTests/`.
 - `Package.swift` a Swift package. There is no Xcode project.
 - `build.sh` builds, signs, and installs `/Applications/MacRemote.app`.
+- `tools/release.sh` builds a universal copy for other Macs in `dist/` (Developer ID and notarization when available, ad hoc otherwise). Install steps are in `README.md`.
 - `Icon/AppIcon.icon` the app icon, an Icon Composer file (JSON plus SVG layers). `build.sh` compiles it with `tools/make_icon.sh`; `tools/icon_review.sh` renders every look into one PNG.
 - `docs/` the brief, the screen index, and the user stories, when they exist.
 
