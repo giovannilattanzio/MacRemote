@@ -21,6 +21,19 @@ public struct Battery: Equatable, Sendable {
         self.percent = percent
     }
 
+    /// A HID Battery Strength value, scaled from the element's logical range
+    /// to a percentage. Fire TV remotes declare 0 to 255 but send a plain
+    /// percentage (a full remote sends 100), so for them pass `isPercent`.
+    public init?(raw: Int, logicalMin: Int, logicalMax: Int, isPercent: Bool = false) {
+        if isPercent {
+            self.init(percent: raw)
+            return
+        }
+        guard logicalMax > logicalMin, (logicalMin...logicalMax).contains(raw) else { return nil }
+        let scaled = Double(raw - logicalMin) * 100 / Double(logicalMax - logicalMin)
+        self.init(percent: Int(scaled.rounded()))
+    }
+
     /// Reads a registry property value, which arrives as an NSNumber.
     public init?(registryValue value: Any?) {
         guard let number = value as? NSNumber else { return nil }

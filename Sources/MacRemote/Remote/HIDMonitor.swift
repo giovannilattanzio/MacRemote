@@ -130,6 +130,34 @@ final class HIDMonitor: ObservableObject {
 
     private func refreshBatteries() {
         for device in devices { readBattery(device.id) }
+        for (id, list) in refs {
+            for device in list where opened.contains(ObjectIdentifier(device)) { requestBattery(device, id: id) }
+        }
+    }
+
+    /// Asks the remote for its Battery Strength element, for remotes on
+    /// classic Bluetooth, where macOS does not keep a BatteryPercent.
+    /// Done off the main thread: the request goes to the remote and waits.
+    private func requestBattery(_ device: IOHIDDevice, id: String) {
+        let matching = [kIOHIDElementUsagePageKey: Int(Battery.usagePage), kIOHIDElementUsageKey: Int(Battery.usage)]
+        guard let element = (IOHIDDeviceCopyMatchingElements(device, matching as CFDictionary, 0) as? [IOHIDElement])?.first
+        else { return }
+        let request = BatteryRequest(device: device, element: element)
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let reading = request.read()
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.received(batteryReading: reading, for: id) }
+            }
+        }
+    }
+
+    private func received(batteryReading reading: BatteryRequest.Reading, for id: String) {
+        log.notice("battery read \(id, privacy: .public) result=\(String(format: "0x%x", reading.result), privacy: .public) raw=\(reading.raw) range=\(reading.min)...\(reading.max)")
+        let isFireTV = devices.first { $0.id == id }?.isFireTV ?? false
+        guard reading.result == kIOReturnSuccess,
+              let battery = Battery(raw: reading.raw, logicalMin: reading.min, logicalMax: reading.max,
+                                    isPercent: isFireTV) else { return }
+        setBattery(battery, for: id)
     }
 
     /// Reads BatteryPercent from the device's registry entry or the
@@ -152,7 +180,7 @@ final class HIDMonitor: ObservableObject {
         guard let index = devices.firstIndex(where: { $0.id == id }),
               devices[index].battery != battery else { return }
         devices[index].battery = battery
-        log.info("battery \(id, privacy: .public) \(battery.percent)%")
+        log.notice("battery \(id, privacy: .public) \(battery.percent)%")
     }
 
     private func property(_ device: IOHIDDevice, _ key: String) -> Any? {
@@ -229,9 +257,10 @@ final class HIDMonitor: ObservableObject {
             let isArray = IOHIDElementGetType(element) == kIOHIDElementTypeInput_Misc
                 && IOHIDElementGetReportCount(element) >= 1 && IOHIDElementIsArray(element)
             let device = IOHIDElementGetDevice(element)
+            let range = (IOHIDElementGetLogicalMin(element), IOHIDElementGetLogicalMax(element))
             let monitor = Unmanaged<HIDMonitor>.fromOpaque(context!).takeUnretainedValue()
             MainActor.assumeIsolated {
-                monitor.received(page: page, usage: usage, value: int, isArray: isArray, from: device)
+                monitor.received(page: page, usage: usage, value: int, range: range, isArray: isArray, from: device)
             }
         }, context)
         IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
@@ -240,6 +269,7 @@ final class HIDMonitor: ObservableObject {
         let usage = property(device, kIOHIDPrimaryUsageKey) as? Int ?? 0
         log.info("open \(id, privacy: .public) primary=\(String(format: "%02X:%04X", page, usage), privacy: .public) seized=\(seized)")
         updateStatus(id)
+        requestBattery(device, id: id)
     }
 
     /// One collection that cannot be seized is enough for macOS to act on its keys.
@@ -308,7 +338,7 @@ final class HIDMonitor: ObservableObject {
 
     // MARK: Input
 
-    private func received(page: UInt32, usage: UInt32, value: Int, isArray: Bool, from device: IOHIDDevice) {
+    private func received(page: UInt32, usage: UInt32, value: Int, range: (Int, Int), isArray: Bool, from device: IOHIDDevice) {
         let id = identity(of: device)
         guard let info = devices.first(where: { $0.id == id }), info.isEnabled else { return }
         log.info("raw \(String(format: "%02X:%04X", page, usage), privacy: .public) value=\(value) array=\(isArray) ref=\(UInt(bitPattern: ObjectIdentifier(device).hashValue))")
@@ -330,7 +360,10 @@ final class HIDMonitor: ObservableObject {
             return
         }
         if page == Battery.usagePage && usage == Battery.usage {
-            if let battery = Battery(percent: value) { setBattery(battery, for: id) }
+            log.notice("battery report \(id, privacy: .public) raw=\(value) range=\(range.0)...\(range.1)")
+            if let battery = Battery(raw: value, logicalMin: range.0, logicalMax: range.1, isPercent: info.isFireTV) {
+                setBattery(battery, for: id)
+            }
             return
         }
         let hid = HIDUsage(page: page, usage: usage)
@@ -343,5 +376,33 @@ final class HIDMonitor: ObservableObject {
         guard buttonState[slot, default: false] != pressed else { return }
         buttonState[slot] = pressed
         onInput?(usage, pressed, device)
+    }
+}
+
+/// One Battery Strength read, safe to run off the main thread: IOHIDDevice
+/// calls are thread-safe, and the device stays retained until it finishes.
+nonisolated private struct BatteryRequest: @unchecked Sendable {
+    struct Reading: Sendable {
+        var result: IOReturn
+        var raw: Int
+        var min: Int
+        var max: Int
+    }
+
+    let device: IOHIDDevice
+    let element: IOHIDElement
+
+    /// kIOHIDDeviceGetValueWithUpdate (IOHIDDevice.h), which Swift does not import:
+    /// sends a get-report to the device instead of returning the last value.
+    private static let withUpdate: IOOptionBits = 0x0002_0000
+
+    func read() -> Reading {
+        var value = Unmanaged.passRetained(IOHIDValueCreateWithIntegerValue(kCFAllocatorDefault, element, 0, 0))
+        defer { value.release() }
+        let result = IOHIDDeviceGetValueWithOptions(device, element, &value,
+                                                    Self.withUpdate)
+        return Reading(result: result,
+                       raw: result == kIOReturnSuccess ? IOHIDValueGetIntegerValue(value.takeUnretainedValue()) : 0,
+                       min: IOHIDElementGetLogicalMin(element), max: IOHIDElementGetLogicalMax(element))
     }
 }

@@ -165,3 +165,18 @@ func batterySymbols(_ percent: Int, symbol: String, low: Bool) {
     #expect(battery.isLow == low)
     #expect(battery.title == "\(percent)%")
 }
+
+@Test func batteryScalesHIDStrength() {
+    #expect(Battery(raw: 255, logicalMin: 0, logicalMax: 255)?.percent == 100)
+    #expect(Battery(raw: 128, logicalMin: 0, logicalMax: 255)?.percent == 50)
+    #expect(Battery(raw: 0, logicalMin: 0, logicalMax: 255)?.percent == 0)
+    #expect(Battery(raw: 80, logicalMin: 0, logicalMax: 100)?.percent == 80)
+    #expect(Battery(raw: 300, logicalMin: 0, logicalMax: 255) == nil)
+    #expect(Battery(raw: 1, logicalMin: 0, logicalMax: 0) == nil)
+}
+
+@Test func fireTVBatteryIsAPercentage() {
+    // Logged from a real Fire TV remote with new batteries: raw 100, range 0...255.
+    #expect(Battery(raw: 100, logicalMin: 0, logicalMax: 255, isPercent: true)?.percent == 100)
+    #expect(Battery(raw: 180, logicalMin: 0, logicalMax: 255, isPercent: true) == nil)
+}
