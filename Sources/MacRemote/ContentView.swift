@@ -49,6 +49,9 @@ struct RemotePage: View {
                     if let name = model.activeRemoteName {
                         Label(name, systemImage: "av.remote.fill")
                         Text(engine.isEnabled ? "Connected and in use" : "Connected, paused")
+                    } else if !model.permissions.inputMonitoring && !Store.isOverridden {
+                        Label("Looking for Remotes Is Off", systemImage: "av.remote")
+                        Text("Allow Input Monitoring below so MacRemote can find the remote.")
                     } else {
                         Label("No Remote Connected", systemImage: "av.remote")
                         Text("Pair a Fire TV remote in Bluetooth settings. Steps below.")
@@ -71,7 +74,7 @@ struct RemotePage: View {
                 PermissionsSection()
             }
 
-            if model.activeRemoteName == nil {
+            if model.activeRemoteName == nil && (model.permissions.inputMonitoring || Store.isOverridden) {
                 PairingSection()
             }
 
