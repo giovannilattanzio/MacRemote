@@ -401,12 +401,16 @@ nonisolated private struct BatteryRequest: @unchecked Sendable {
     private static let withUpdate: IOOptionBits = 0x0002_0000
 
     func read() -> Reading {
-        var value = Unmanaged.passRetained(IOHIDValueCreateWithIntegerValue(kCFAllocatorDefault, element, 0, 0))
-        defer { value.release() }
-        let result = IOHIDDeviceGetValueWithOptions(device, element, &value,
-                                                    Self.withUpdate)
-        return Reading(result: result,
-                       raw: result == kIOReturnSuccess ? IOHIDValueGetIntegerValue(value.takeUnretainedValue()) : 0,
+        // The out value follows the Get rule: the element owns it, so it must
+        // not be released here. The placeholder only gives `value` a start.
+        let placeholder = IOHIDValueCreateWithIntegerValue(kCFAllocatorDefault, element, 0, 0)
+        var value = Unmanaged.passUnretained(placeholder)
+        let result = withExtendedLifetime(placeholder) {
+            IOHIDDeviceGetValueWithOptions(device, element, &value, Self.withUpdate)
+        }
+        // takeUnretainedValue retains it for as long as Swift uses it.
+        let raw = result == kIOReturnSuccess ? IOHIDValueGetIntegerValue(value.takeUnretainedValue()) : 0
+        return Reading(result: result, raw: raw,
                        min: IOHIDElementGetLogicalMin(element), max: IOHIDElementGetLogicalMax(element))
     }
 }
