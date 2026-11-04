@@ -130,6 +130,8 @@ enum Symbol {
         "av.remote.fill": "appletvremote.gen4.fill",
         "appletvremote.gen4": "rectangle.portrait",
         "appletvremote.gen4.fill": "rectangle.portrait.fill",
+        "battery.75": "battery.100",
+        "battery.50": "battery.25",
     ]
     private static var cache: [String: String] = [:]
 

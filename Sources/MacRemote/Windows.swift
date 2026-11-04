@@ -175,6 +175,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         guard let delegate else { return }
         menu.removeAllItems()
         menu.addItem(withTitle: model.monitor.activeRemoteName ?? "No Remote Connected", action: nil, keyEquivalent: "")
+        if let battery = model.monitor.activeRemote?.battery {
+            menu.addItem(withTitle: "Battery: \(battery.title)\(battery.isLow ? ", low" : "")", action: nil, keyEquivalent: "")
+        }
         if !model.permissions.allGranted && !Store.isOverridden {
             menu.addItem(withTitle: "Needs permissions. Open MacRemote.", action: nil, keyEquivalent: "")
         }

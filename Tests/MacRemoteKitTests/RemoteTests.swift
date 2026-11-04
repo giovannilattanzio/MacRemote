@@ -145,3 +145,23 @@ func resolves(_ usage: HIDUsage, button: RemoteButton) {
     // The old drawing: Alexa remote, 4.2 widths long.
     #expect(abs(voice.aspect - 4.2) < 0.01)
 }
+
+@Test func batteryReadsRegistryValues() {
+    #expect(Battery(registryValue: NSNumber(value: 72))?.percent == 72)
+    #expect(Battery(registryValue: 72)?.percent == 72)
+    #expect(Battery(registryValue: "72") == nil)
+    #expect(Battery(registryValue: nil) == nil)
+    #expect(Battery(percent: 101) == nil)
+    #expect(Battery(percent: -1) == nil)
+}
+
+@Test("Battery symbols and low warning", arguments: [
+    (100, "battery.100", false), (75, "battery.75", false), (50, "battery.50", false),
+    (21, "battery.25", false), (20, "battery.25", true), (5, "battery.0", true),
+])
+func batterySymbols(_ percent: Int, symbol: String, low: Bool) {
+    let battery = Battery(percent: percent)!
+    #expect(battery.symbol == symbol)
+    #expect(battery.isLow == low)
+    #expect(battery.title == "\(percent)%")
+}

@@ -57,6 +57,10 @@ struct RemotePage: View {
                         .padding(.leading, Space.sm)
                     VStack(alignment: .leading, spacing: 0) {
                         status
+                        if let remote = monitor.activeRemote {
+                            CardDivider()
+                            BatteryRow(battery: remote.battery)
+                        }
                         CardDivider()
                         Row(title: "Mode") {
                             Picker("Mode", selection: Binding(get: { engine.mode }, set: { engine.setMode($0) })) {
@@ -110,6 +114,30 @@ struct RemotePage: View {
                 subtitle: "Allow Input Monitoring below so MacRemote can find the remote.")
         } else {
             Row(title: "No Remote Connected", subtitle: "Pair a Fire TV remote in Bluetooth settings. Steps below.")
+        }
+    }
+}
+
+/// The remote's charge, with a nudge to change the batteries when it is low.
+struct BatteryRow: View {
+    let battery: Battery?
+
+    private var subtitle: String {
+        guard let battery else { return "This remote has not reported its battery level yet." }
+        return battery.isLow ? "Low. Replace the remote's batteries soon." : "Reported by the remote."
+    }
+
+    var body: some View {
+        Row(title: "Battery", subtitle: subtitle) {
+            if let battery {
+                Label(battery.title, systemImage: Symbol.named(battery.symbol))
+                    .foregroundStyle(battery.isLow ? Color(nsColor: .systemRed) : .secondary)
+                    .monospacedDigit()
+                    .help("Battery \(battery.title)")
+            } else {
+                Text("Unknown")
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }
@@ -298,8 +326,10 @@ private struct DeviceRow: View {
     private var status: String {
         guard device.isEnabled else { return device.transport.isEmpty ? "Not used" : "\(device.transport) · Not used" }
         guard device.isOpen else { return "Could not be opened" }
-        if device.isSeized { return "In use" }
-        return device.keysBlocked ? "In use, macOS ignores its keys" : "In use, shared with macOS"
+        let use = device.isSeized ? "In use"
+            : device.keysBlocked ? "In use, macOS ignores its keys" : "In use, shared with macOS"
+        guard let battery = device.battery else { return use }
+        return "\(use) · Battery \(battery.title)\(battery.isLow ? ", low" : "")"
     }
 
     var body: some View {

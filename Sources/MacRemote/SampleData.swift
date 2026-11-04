@@ -12,7 +12,8 @@ enum SampleData {
         }
         model.monitor.show(sample: [
             .init(id: "fire", name: "Amazon Fire TV Remote", vendorID: 0x1949, productID: 0x0404,
-                  transport: "Bluetooth Low Energy", isFireTV: true, isEnabled: true, isOpen: true, isSeized: true),
+                  transport: "Bluetooth Low Energy", isFireTV: true, isEnabled: true, isOpen: true, isSeized: true,
+                  battery: Battery(percent: 72)),
             .init(id: "kbd", name: "Magic Keyboard", vendorID: 0x05AC, productID: 0x029C,
                   transport: "Bluetooth", isFireTV: false, isEnabled: false),
             .init(id: "mx", name: "MX Master 3S", vendorID: 0x046D, productID: 0xB034,

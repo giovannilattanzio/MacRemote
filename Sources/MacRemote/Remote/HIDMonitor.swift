@@ -23,6 +23,8 @@ final class HIDMonitor: ObservableObject {
         var isSeized = false
         /// macOS told to ignore its keys (KeyBlock), because it could not be seized.
         var keysBlocked = false
+        /// The charge, when the remote or macOS reports it.
+        var battery: Battery?
 
         /// Only MacRemote acts on its presses.
         var isExclusive: Bool { isSeized || keysBlocked }
@@ -116,6 +118,41 @@ final class HIDMonitor: ObservableObject {
         }, context)
         IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
         self.manager = manager
+        // macOS updates BatteryPercent on its own schedule; a minute is plenty for a remote.
+        batteryTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshBatteries() }
+        }
+    }
+
+    // MARK: Battery
+
+    private var batteryTimer: Timer?
+
+    private func refreshBatteries() {
+        for device in devices { readBattery(device.id) }
+    }
+
+    /// Reads BatteryPercent from the device's registry entry or the
+    /// Bluetooth entries above it, where macOS puts it for LE remotes.
+    private func readBattery(_ id: String) {
+        for device in refs[id] ?? [] {
+            let service = IOHIDDeviceGetService(device)
+            guard service != MACH_PORT_NULL else { continue }
+            let value = IORegistryEntrySearchCFProperty(
+                service, kIOServicePlane, Battery.registryKey as CFString, kCFAllocatorDefault,
+                IOOptionBits(kIORegistryIterateRecursively | kIORegistryIterateParents))
+            if let battery = Battery(registryValue: value) {
+                setBattery(battery, for: id)
+                return
+            }
+        }
+    }
+
+    private func setBattery(_ battery: Battery, for id: String) {
+        guard let index = devices.firstIndex(where: { $0.id == id }),
+              devices[index].battery != battery else { return }
+        devices[index].battery = battery
+        log.info("battery \(id, privacy: .public) \(battery.percent)%")
     }
 
     private func property(_ device: IOHIDDevice, _ key: String) -> Any? {
@@ -148,6 +185,7 @@ final class HIDMonitor: ObservableObject {
             devices.sort { ($0.isFireTV ? 0 : 1, $0.name) < ($1.isFireTV ? 0 : 1, $1.name) }
         }
         if devices.first(where: { $0.id == id })?.isEnabled == true { open(device, id: id) }
+        readBattery(id)
     }
 
     private func removed(_ device: IOHIDDevice) {
@@ -289,6 +327,10 @@ final class HIDMonitor: ObservableObject {
                 arrayHeld[slot] = pressed
                 emit(pressed, true, info)
             }
+            return
+        }
+        if page == Battery.usagePage && usage == Battery.usage {
+            if let battery = Battery(percent: value) { setBattery(battery, for: id) }
             return
         }
         let hid = HIDUsage(page: page, usage: usage)
