@@ -124,9 +124,24 @@ func resolves(_ usage: HIDUsage, button: RemoteButton) {
 }
 
 @Test func layoutFollowsProductAndPresses() {
-    #expect(RemoteLayout.forRemote(productID: 0x0404) == .classic)
-    #expect(RemoteLayout.forRemote(productID: 0x0404, seen: [.select, .home]) == .classic)
-    #expect(RemoteLayout.forRemote(productID: 0x0404, seen: [.volumeUp]) == .tvControls)
-    #expect(!RemoteLayout.classic.buttons.contains(.mute))
-    #expect(RemoteLayout.tvControls.buttons.contains(.power))
+    let plain = RemoteLayout.forRemote(productID: 0x0404)
+    #expect(!plain.hasVoice && !plain.hasTVControls)
+    #expect(RemoteLayout.forRemote(productID: 0x0404, seen: [.select, .home]) == plain)
+    #expect(RemoteLayout.forRemote(productID: 0x0404, seen: [.voice]).hasVoice)
+    #expect(RemoteLayout.forRemote(productID: 0x0404, seen: [.volumeUp]).hasTVControls)
+    #expect(!RemoteLayout.forRemote(productID: 0x9999).hasVoice)
+    #expect(!plain.buttons.contains(.voice) && !plain.buttons.contains(.mute))
+    #expect(RemoteLayout(hasVoice: true, hasTVControls: true).buttons.isSuperset(of: [.voice, .power]))
+}
+
+@Test func layoutMakesRoomForOptionalButtons() {
+    let plain = RemoteLayout()
+    let voice = RemoteLayout(hasVoice: true)
+    let full = RemoteLayout(hasVoice: true, hasTVControls: true)
+    #expect(plain.padY < voice.padY)
+    #expect(plain.aspect < voice.aspect)
+    #expect(voice.aspect < full.aspect)
+    #expect(full.rowYs.count == 3 && plain.rowYs.count == 2)
+    // The old drawing: Alexa remote, 4.2 widths long.
+    #expect(abs(voice.aspect - 4.2) < 0.01)
 }

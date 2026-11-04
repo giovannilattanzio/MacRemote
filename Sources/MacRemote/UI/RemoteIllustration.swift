@@ -6,20 +6,17 @@ import SwiftUI
 /// The remote's own colors are a depiction of the real object: they stay
 /// the same in light and dark mode, like a product photo would.
 struct RemoteIllustration: View {
-    var layout: RemoteLayout = .classic
+    var layout = RemoteLayout()
     var lit: Set<RemoteButton> = []
     var width: CGFloat
     /// Dimmed while no remote is connected.
     var isConnected = true
 
-    /// Length to width of the real remote.
-    static let aspect: CGFloat = 4.2
-
     var body: some View {
         Canvas { context, size in
             Drawing(layout: layout, lit: lit, size: size).draw(in: &context)
         }
-        .frame(width: width, height: width * Self.aspect)
+        .frame(width: width, height: width * layout.aspect)
         // Lifts the black remote off a dark card.
         .shadow(color: .black.opacity(0.3), radius: width / 12, x: 0, y: width / 24)
         .opacity(isConnected ? 1 : 0.45)
@@ -50,16 +47,15 @@ private struct Drawing {
         drawBody(&context)
         drawTop(&context)
         drawPad(&context)
-        let rows: [(CGFloat, [(RemoteButton, String)])] = [
-            (0.565, [(.back, "arrow.uturn.backward"), (.home, "house.fill"), (.menu, "line.3.horizontal")]),
-            (0.665, [(.rewind, "backward.fill"), (.playPause, "playpause.fill"), (.fastForward, "forward.fill")]),
-        ] + (layout == .tvControls
-             ? [(0.77, [(.volumeDown, "minus"), (.mute, "speaker.slash.fill"), (.volumeUp, "plus")])]
-             : [])
-        for (y, keys) in rows {
+        let rows: [[(RemoteButton, String)]] = [
+            [(.back, "arrow.uturn.backward"), (.home, "house.fill"), (.menu, "line.3.horizontal")],
+            [(.rewind, "backward.fill"), (.playPause, "playpause.fill"), (.fastForward, "forward.fill")],
+            [(.volumeDown, "minus"), (.mute, "speaker.slash.fill"), (.volumeUp, "plus")],
+        ]
+        for (y, keys) in zip(layout.rowYs, rows) {
             for (index, key) in keys.enumerated() {
                 let x = w * [0.22, 0.5, 0.78][index]
-                drawKey(&context, key.0, symbol: key.1, center: CGPoint(x: x, y: h * y), diameter: w * 0.25)
+                drawKey(&context, key.0, symbol: key.1, center: CGPoint(x: x, y: w * y), diameter: w * 0.25)
             }
         }
     }
@@ -73,18 +69,21 @@ private struct Drawing {
     }
 
     private func drawTop(_ context: inout GraphicsContext) {
+        if layout.hasTVControls {
+            drawKey(&context, .power, symbol: "power", center: CGPoint(x: w * 0.2, y: w * layout.powerY),
+                    diameter: w * 0.17)
+        }
+        guard layout.hasVoice else { return }
         // The light bar, which glows while you talk to Alexa.
-        let led = CGRect(x: w * 0.36, y: h * 0.045, width: w * 0.28, height: max(2, w * 0.035))
+        let led = CGRect(x: w * 0.36, y: w * 0.19, width: w * 0.28, height: max(2, w * 0.035))
         context.fill(Path(roundedRect: led, cornerRadius: led.height / 2),
                      with: .color(lit.contains(.voice) ? accent : ledColor))
-        if layout == .tvControls {
-            drawKey(&context, .power, symbol: "power", center: CGPoint(x: w * 0.2, y: h * 0.05), diameter: w * 0.17)
-        }
-        drawKey(&context, .voice, symbol: "mic.fill", center: CGPoint(x: w / 2, y: h * 0.135), diameter: w * 0.3)
+        drawKey(&context, .voice, symbol: "mic.fill", center: CGPoint(x: w / 2, y: w * layout.voiceY),
+                diameter: w * 0.3)
     }
 
     private func drawPad(_ context: inout GraphicsContext) {
-        let center = CGPoint(x: w / 2, y: h * 0.345)
+        let center = CGPoint(x: w / 2, y: w * layout.padY)
         let outer = w * 0.42
         let inner = w * 0.2
         var ring = Path()
