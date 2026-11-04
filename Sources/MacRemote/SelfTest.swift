@@ -63,8 +63,8 @@ enum SelfTest {
             press(.key(0x52), exclusive: false); release(.key(0x52))
             check("a shared remote does not press Up twice", recorder.log.isEmpty)
 
-            press(.consumer(0x40)); release(.consumer(0x40))
-            check("Menu switches to Pointer mode", engine.mode == .pointer)
+            press(.consumer(0x40)); press(.consumer(0x40)); release(.consumer(0x40)); release(.consumer(0x40))
+            check("Menu switches to Pointer mode, even when the press is reported twice", engine.mode == .pointer)
 
             press(.key(0x4F)); advance(0.5); release(.key(0x4F))
             check("holding Right moves the pointer right", recorder.moved.dx > 40 && recorder.moved.dy == 0,

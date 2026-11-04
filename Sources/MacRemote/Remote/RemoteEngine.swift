@@ -92,6 +92,8 @@ final class RemoteEngine: ObservableObject {
         guard action != .none else { return }
         if action == .toggleMode {
             toggleMode()
+            // Held like any button, so a repeated report of the same press does not switch back.
+            held[key] = Held(action: action, start: clock(), fired: 1, perform: false)
             return
         }
         let now = clock()

@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import IOKit.hid
+import os
 import MacRemoteKit
 
 /// Finds remotes among the Mac's HID devices and reads their buttons.
@@ -36,6 +37,12 @@ final class HIDMonitor: ObservableObject {
     private var refs: [String: [IOHIDDevice]] = [:]
     /// For array-style reports: the usage held on each page of each device.
     private var arrayHeld: [String: HIDUsage] = [:]
+    /// Last state of each button of each device. A remote that shows up as
+    /// several HID devices reports one press on each; only the first counts.
+    private var buttonState: [String: Bool] = [:]
+    /// Every raw value from a remote in use, for diagnosing new remotes:
+    ///   log stream --level info --predicate 'subsystem == "com.gilattanzio.macremote"'
+    private let log = Logger(subsystem: "com.gilattanzio.macremote", category: "hid")
 
     init(defaults: UserDefaults) {
         self.defaults = defaults
@@ -170,6 +177,9 @@ final class HIDMonitor: ObservableObject {
         }, context)
         IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
         if seized { seizedRefs.insert(ObjectIdentifier(device)) }
+        let page = property(device, kIOHIDPrimaryUsagePageKey) as? Int ?? 0
+        let usage = property(device, kIOHIDPrimaryUsageKey) as? Int ?? 0
+        log.info("open \(id, privacy: .public) primary=\(String(format: "%02X:%04X", page, usage), privacy: .public) seized=\(seized)")
         updateStatus(id)
     }
 
@@ -196,22 +206,30 @@ final class HIDMonitor: ObservableObject {
     private func received(page: UInt32, usage: UInt32, value: Int, isArray: Bool, from device: IOHIDDevice) {
         let id = identity(of: device)
         guard let info = devices.first(where: { $0.id == id }), info.isEnabled else { return }
+        log.info("raw \(String(format: "%02X:%04X", page, usage), privacy: .public) value=\(value) array=\(isArray) ref=\(UInt(bitPattern: ObjectIdentifier(device).hashValue))")
         if isArray {
             // Array reports carry the pressed usage as the value, and 0 on release.
             let slot = "\(id)/\(page)"
             if value == 0 {
-                if let held = arrayHeld.removeValue(forKey: slot) { onInput?(held, false, info) }
+                if let held = arrayHeld.removeValue(forKey: slot) { emit(held, false, info) }
             } else {
                 let pressed = HIDUsage(page: page, usage: UInt32(truncatingIfNeeded: value))
                 guard pressed.isButton, arrayHeld[slot] != pressed else { return }
-                if let held = arrayHeld[slot] { onInput?(held, false, info) }
+                if let held = arrayHeld[slot] { emit(held, false, info) }
                 arrayHeld[slot] = pressed
-                onInput?(pressed, true, info)
+                emit(pressed, true, info)
             }
             return
         }
         let hid = HIDUsage(page: page, usage: usage)
         guard hid.isButton else { return }
-        onInput?(hid, value != 0, info)
+        emit(hid, value != 0, info)
+    }
+
+    private func emit(_ usage: HIDUsage, _ pressed: Bool, _ device: Device) {
+        let slot = "\(device.id)/\(usage)"
+        guard buttonState[slot, default: false] != pressed else { return }
+        buttonState[slot] = pressed
+        onInput?(usage, pressed, device)
     }
 }
