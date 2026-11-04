@@ -35,6 +35,9 @@ final class AppModel: ObservableObject {
     let hud = ModeHUD()
 
     @Published var sidebar: SidebarItem = .remote
+    /// Keeps App Nap away. A napping app gets its timers slowed to seconds,
+    /// and Pointer mode moves the pointer from a 120 Hz timer.
+    private var activity: NSObjectProtocol?
 
     init(sink: EffectSink = EventSynth()) {
         engine = RemoteEngine(defaults: Store.defaults, sink: sink)
@@ -53,6 +56,9 @@ final class AppModel: ObservableObject {
             SampleData.fill(self)
         }
         guard !Store.isOverridden else { return }
+        activity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep, .latencyCritical],
+            reason: "Turning remote control presses into pointer and key events")
         permissions.onChange = { [monitor, permissions] in
             if permissions.inputMonitoring { monitor.start() }
         }

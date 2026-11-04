@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import os
 import MacRemoteKit
 
 /// Turns remote button presses into actions on the Mac: looks up the action
@@ -33,6 +34,7 @@ final class RemoteEngine: ObservableObject {
     private let defaults: UserDefaults
     private let sink: EffectSink
     private let repeatTiming = KeyRepeat()
+    private let log = Logger(subsystem: "com.gilattanzio.macremote", category: "engine")
 
     private struct Held {
         let action: RemoteAction
@@ -89,6 +91,7 @@ final class RemoteEngine: ObservableObject {
         recent.insert(Press(key: key, usage: usage, action: action, device: device,
                             date: .now, handledByMac: byMac), at: 0)
         if recent.count > 12 { recent.removeLast() }
+        log.info("press \(key.raw, privacy: .public) mode=\(self.mode.rawValue, privacy: .public) action=\(action.rawValue, privacy: .public) byMac=\(byMac)")
         guard action != .none else { return }
         if action == .toggleMode {
             toggleMode()
