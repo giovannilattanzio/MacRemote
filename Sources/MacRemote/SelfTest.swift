@@ -91,6 +91,11 @@ enum SelfTest {
             press(learned); release(learned)
             check("a learned button runs its action", recorder.log.first == "+fullScreen")
 
+            recorder.log = []
+            engine.setMode(.navigation)
+            press(.key(0x52), exclusive: true); release(.key(0x52))
+            check("with macOS ignoring the remote's keys, the app presses Up itself", recorder.log.first == "+arrowUp")
+
             let reloaded = RemoteEngine(defaults: Store.defaults, sink: recorder)
             check("button choices are saved", reloaded.profile == engine.profile)
             engine.restoreDefaults()

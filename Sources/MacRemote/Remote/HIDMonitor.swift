@@ -21,6 +21,11 @@ final class HIDMonitor: ObservableObject {
         var isOpen = false
         /// Opened exclusively. Otherwise macOS also acts on its keys.
         var isSeized = false
+        /// macOS told to ignore its keys (KeyBlock), because it could not be seized.
+        var keysBlocked = false
+
+        /// Only MacRemote acts on its presses.
+        var isExclusive: Bool { isSeized || keysBlocked }
     }
 
     @Published private(set) var devices: [Device] = []
@@ -49,6 +54,7 @@ final class HIDMonitor: ObservableObject {
 
     init(defaults: UserDefaults) {
         self.defaults = defaults
+        blockKeys = defaults.bool(forKey: "devices.blockKeys")
     }
 
     // MARK: Choices people make in Devices
@@ -61,6 +67,14 @@ final class HIDMonitor: ObservableObject {
     private var turnedOff: Set<String> {
         get { Set(defaults.stringArray(forKey: "devices.off") ?? []) }
         set { defaults.set(Array(newValue), forKey: "devices.off") }
+    }
+
+    /// "Only MacRemote responds to the remote", from the Devices page.
+    @Published var blockKeys: Bool {
+        didSet {
+            defaults.set(blockKeys, forKey: "devices.blockKeys")
+            applyBlocking()
+        }
     }
 
     func setEnabled(_ enabled: Bool, for id: String) {
@@ -193,6 +207,51 @@ final class HIDMonitor: ObservableObject {
         let open = (refs[id] ?? []).map(ObjectIdentifier.init).filter(opened.contains)
         devices[index].isOpen = !open.isEmpty
         devices[index].isSeized = !open.isEmpty && open.allSatisfy(seizedRefs.contains)
+        applyBlocking()
+    }
+
+    // MARK: Key blocking
+
+    /// Blocks or unblocks each device's keys in macOS to match the setting:
+    /// blocked while the device is in use and could not be seized.
+    private func applyBlocking() {
+        for index in devices.indices {
+            let device = devices[index]
+            let wanted = blockKeys && device.isEnabled && device.isOpen && !device.isSeized
+            guard wanted != device.keysBlocked else { continue }
+            if setKeyBlock(wanted, vendorID: device.vendorID, productID: device.productID) {
+                devices[index].keysBlocked = wanted
+            }
+        }
+    }
+
+    /// Gives every blocked remote its keys back. Called when the app quits,
+    /// so a remote never stays silent without MacRemote running.
+    func clearBlocking() {
+        for index in devices.indices where devices[index].keysBlocked {
+            _ = setKeyBlock(false, vendorID: devices[index].vendorID, productID: devices[index].productID)
+            devices[index].keysBlocked = false
+        }
+    }
+
+    private func setKeyBlock(_ blocked: Bool, vendorID: Int, productID: Int) -> Bool {
+        guard !Store.isOverridden else { return true }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/hidutil")
+        process.arguments = ["property",
+                             "--matching", KeyBlock.matching(vendorID: vendorID, productID: productID),
+                             "--set", KeyBlock.setting(blocked: blocked)]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            log.error("hidutil failed: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+        log.info("keys \(blocked ? "blocked" : "restored", privacy: .public) for \(vendorID):\(productID) exit=\(process.terminationStatus)")
+        return process.terminationStatus == 0
     }
 
     private func close(_ id: String) {

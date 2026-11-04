@@ -107,3 +107,18 @@ func resolves(_ usage: HIDUsage, button: RemoteButton) {
     #expect(counter.click(at: 10.2) == 2)
     #expect(counter.click(at: 11) == 1)
 }
+
+@Test func keyBlockCoversTheRemoteAndClears() throws {
+    #expect(KeyBlock.code(.key(0x51)) == 0x7_0000_0051)
+    #expect(KeyBlock.code(.consumer(0xCD)) == 0xC_0000_00CD)
+    let usages = Set(KeyBlock.blockedUsages)
+    for button in RemoteButton.allCases {
+        for usage in button.usages { #expect(usages.contains(usage)) }
+    }
+    let set = KeyBlock.setting(blocked: true)
+    let json = try JSONSerialization.jsonObject(with: Data(set.utf8)) as? [String: [[String: UInt64]]]
+    #expect(json?["UserKeyMapping"]?.count == usages.count)
+    #expect(json?["UserKeyMapping"]?.allSatisfy { $0["HIDKeyboardModifierMappingDst"] == 0x7_0000_0000 } == true)
+    #expect(KeyBlock.setting(blocked: false) == #"{"UserKeyMapping":[]}"#)
+    #expect(KeyBlock.matching(vendorID: 6473, productID: 1028) == #"{"VendorID":6473,"ProductID":1028}"#)
+}

@@ -43,7 +43,7 @@ final class AppModel: ObservableObject {
         engine = RemoteEngine(defaults: Store.defaults, sink: sink)
         monitor = HIDMonitor(defaults: Store.defaults)
         monitor.onInput = { [engine] usage, pressed, device in
-            engine.handle(usage: usage, pressed: pressed, exclusive: device.isSeized, from: device.name)
+            engine.handle(usage: usage, pressed: pressed, exclusive: device.isExclusive, from: device.name)
         }
         engine.onModeChange = { [hud] mode in
             if Store.defaults.object(forKey: "showModeHUD") as? Bool ?? true { hud.show(mode) }

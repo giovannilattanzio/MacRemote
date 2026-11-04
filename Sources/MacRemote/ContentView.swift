@@ -250,6 +250,16 @@ struct DevicesPage: View {
                         DeviceRow(device: device)
                     }
                 }
+                Card(footer: monitor.blockKeys
+                     ? "macOS ignores the remote's own keys while MacRemote runs. They come back when you turn this off, stop using the remote, or quit MacRemote."
+                     : "macOS also reads the remote as a keyboard, so in Pointer mode the D-pad sends arrow keys too, and Select presses Return.") {
+                    Row(title: "Only MacRemote responds to the remote",
+                        subtitle: "Stops macOS from also acting on the remote's keys.") {
+                        Toggle("Only MacRemote responds to the remote", isOn: $monitor.blockKeys)
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                    }
+                }
                 if !others.isEmpty {
                     Card(title: "Other Devices",
                          footer: "Turn on another remote to control the Mac with it. Turning on your keyboard makes it act like a remote.") {
@@ -271,7 +281,8 @@ private struct DeviceRow: View {
     private var status: String {
         guard device.isEnabled else { return device.transport.isEmpty ? "Not used" : "\(device.transport) · Not used" }
         guard device.isOpen else { return "Could not be opened" }
-        return device.isSeized ? "In use" : "In use, shared with macOS"
+        if device.isSeized { return "In use" }
+        return device.keysBlocked ? "In use, macOS ignores its keys" : "In use, shared with macOS"
     }
 
     var body: some View {
@@ -283,7 +294,7 @@ private struct DeviceRow: View {
             .toggleStyle(.switch)
             .labelsHidden()
         }
-        .help(device.isEnabled && !device.isSeized
+        .help(device.isEnabled && !device.isExclusive
               ? "macOS also reads this device, so its arrow, Return, and media keys act on their own too."
               : String(format: "Vendor %04X, product %04X", device.vendorID, device.productID))
     }

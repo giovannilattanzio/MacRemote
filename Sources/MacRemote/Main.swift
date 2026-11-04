@@ -52,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// The self-test's result becomes the exit code, after a normal quit.
     func applicationWillTerminate(_ notification: Notification) {
+        model.monitor.clearBlocking()
         if SelfTest.requested { exit(SelfTest.exitCode) }
     }
 
