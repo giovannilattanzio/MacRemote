@@ -72,6 +72,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func toggleEnabled() { model.engine.isEnabled.toggle() }
     @objc func toggleMode() { model.engine.toggleMode() }
     @objc func restoreDefaults() { model.engine.restoreDefaults() }
+    @objc func addApp() {
+        model.sidebar = .apps
+        showMainWindow()
+        AppChooser.chooseFromDisk(into: model.engine)
+    }
 
     @objc func selectMode(_ sender: NSMenuItem) {
         if let mode = sender.representedObject as? String, let new = RemoteMode(rawValue: mode) {
@@ -155,6 +160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Switch to \(engine.mode.next.title) Mode", #selector(toggleMode), "m", shift: true))
         menu.addItem(.separator())
         menu.addItem(item("Restore Default Buttons", #selector(restoreDefaults), "r", shift: true))
+        menu.addItem(item("Add App…", #selector(addApp), "a", shift: true))
     }
 
     func item(_ title: String, _ action: Selector, _ key: String = "", shift: Bool = false) -> NSMenuItem {

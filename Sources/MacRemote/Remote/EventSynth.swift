@@ -91,6 +91,8 @@ final class EventSynth: EffectSink {
     private func post(_ code: CGKeyCode, down: Bool, flags: CGEventFlags) {
         let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down)
         event?.flags = flags
+        // RemoteKeyFilter lets MacRemote's own keys through.
+        event?.setIntegerValueField(.eventSourceUserData, value: RemoteKeyFilter.marker)
         event?.post(tap: .cghidEventTap)
     }
 
@@ -98,12 +100,15 @@ final class EventSynth: EffectSink {
     private func media(_ key: MediaKey) {
         for down in [true, false] {
             let state = down ? 0xA00 : 0xB00
-            NSEvent.otherEvent(
+            let event = NSEvent.otherEvent(
                 with: .systemDefined, location: .zero,
                 modifierFlags: NSEvent.ModifierFlags(rawValue: UInt(state)),
                 timestamp: 0, windowNumber: 0, context: nil, subtype: 8,
                 data1: Int(key.rawValue) << 16 | state, data2: -1
-            )?.cgEvent?.post(tap: .cghidEventTap)
+            )?.cgEvent
+            // RemoteKeyFilter lets MacRemote's own media keys through.
+            event?.setIntegerValueField(.eventSourceUserData, value: RemoteKeyFilter.marker)
+            event?.post(tap: .cghidEventTap)
         }
     }
 

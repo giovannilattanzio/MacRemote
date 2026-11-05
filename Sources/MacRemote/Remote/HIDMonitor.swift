@@ -297,9 +297,10 @@ final class HIDMonitor: ObservableObject {
             let device = devices[index]
             let wanted = blockKeys && device.isEnabled && device.isOpen && !device.isSeized
             guard wanted != device.keysBlocked else { continue }
-            if setKeyBlock(wanted, vendorID: device.vendorID, productID: device.productID) {
-                devices[index].keysBlocked = wanted
-            }
+            // RemoteKeyFilter drops the remote's keys even where hidutil does not
+            // hold (macOS 12), so the switch counts whatever hidutil says.
+            _ = setKeyBlock(wanted, vendorID: device.vendorID, productID: device.productID)
+            devices[index].keysBlocked = wanted
         }
     }
 
@@ -328,7 +329,11 @@ final class HIDMonitor: ObservableObject {
             log.error("hidutil failed: \(error.localizedDescription, privacy: .public)")
             return false
         }
-        log.info("keys \(blocked ? "blocked" : "restored", privacy: .public) for \(vendorID):\(productID) exit=\(process.terminationStatus)")
+        if process.terminationStatus == 0 {
+            log.info("keys \(blocked ? "blocked" : "restored", privacy: .public) for \(vendorID):\(productID)")
+        } else {
+            log.error("hidutil could not \(blocked ? "block" : "restore", privacy: .public) keys for \(vendorID):\(productID): exit \(process.terminationStatus)")
+        }
         return process.terminationStatus == 0
     }
 

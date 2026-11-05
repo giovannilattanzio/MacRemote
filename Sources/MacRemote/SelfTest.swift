@@ -101,6 +101,35 @@ enum SelfTest {
             engine.restoreDefaults()
             check("Restore Defaults resets buttons", engine.profile == .standard)
 
+            let playPause = HIDUsage.consumer(0xCD)
+            var front: String? = "com.example.player"
+            engine.frontmostApp = { front }
+            engine.appOverrides.add(bundleID: "com.example.player", name: "Player")
+            recorder.log = []
+            press(playPause); release(playPause)
+            check("an added app gets Space from Play/Pause", recorder.log == ["+space", "-space"])
+            front = "com.apple.Safari"
+            recorder.log = []
+            press(playPause); release(playPause)
+            check("other apps still get the Play/Pause media key", recorder.log == ["+playPause", "-playPause"])
+            check("app buttons are saved",
+                  RemoteEngine(defaults: Store.defaults, sink: recorder).appOverrides == engine.appOverrides)
+            engine.appOverrides.remove(app: "com.example.player")
+
+            var mediaGuard = MediaKeyGuard()
+            mediaGuard.remote(playPause, at: 50)
+            check("macOS's own Play key from a shared remote is dropped",
+                  mediaGuard.decide(MediaKey.play.rawValue, at: 50.05, remoteShared: true) == .drop)
+            check("the keyboard's Play key still works",
+                  !mediaGuard.cameFromRemote(MediaKey.play.rawValue, at: 60))
+
+            var keyGuard = KeyGuard()
+            keyGuard.remote(.key(0x51), pressed: true, at: 70)
+            check("with keys blocked, macOS's Down arrow from a held D-pad is dropped",
+                  keyGuard.cameFromRemote(125, at: 71))
+            keyGuard.remote(.key(0x51), pressed: false, at: 71.2)
+            check("the keyboard's Down arrow still works", !keyGuard.cameFromRemote(125, at: 80))
+
             var notices: [RemoteNotice] = []
             var uptime = 0.0
             let notifier = RemoteNotifier(defaults: Store.defaults, settle: 0.1, startQuiet: 1, clock: { uptime })

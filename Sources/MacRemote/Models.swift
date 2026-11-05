@@ -4,7 +4,7 @@ import MacRemoteKit
 
 /// The sidebar pages. Snapshot mode walks through every case.
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case remote, buttons, devices
+    case remote, buttons, apps, devices
 
     var id: String { rawValue }
 
@@ -12,6 +12,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .remote: "Remote"
         case .buttons: "Buttons"
+        case .apps: "Apps"
         case .devices: "Devices"
         }
     }
@@ -20,6 +21,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .remote: "av.remote"
         case .buttons: "square.grid.3x3"
+        case .apps: "macwindow.on.rectangle"
         case .devices: "dot.radiowaves.left.and.right"
         }
     }
@@ -34,6 +36,7 @@ final class AppModel: ObservableObject {
     let permissions = Permissions()
     let hud = ModeHUD()
     let notifier = RemoteNotifier(defaults: Store.defaults)
+    let keyFilter = RemoteKeyFilter()
 
     @Published var sidebar: SidebarItem = .remote
     /// Keeps App Nap away. A napping app gets its timers slowed to seconds,
@@ -43,13 +46,20 @@ final class AppModel: ObservableObject {
     init(sink: EffectSink = EventSynth()) {
         engine = RemoteEngine(defaults: Store.defaults, sink: sink)
         monitor = HIDMonitor(defaults: Store.defaults)
-        monitor.onInput = { [engine] usage, pressed, device in
+        monitor.onInput = { [engine, keyFilter] usage, pressed, device in
+            if engine.isEnabled, !device.isSeized { keyFilter.remote(usage, pressed: pressed) }
             engine.handle(usage: usage, pressed: pressed, exclusive: device.isExclusive, from: device.name)
         }
         monitor.onConnection = { [notifier] device, connected in
             notifier.connection(device, connected: connected)
         }
         monitor.onBattery = { [notifier] device in notifier.battery(device) }
+        keyFilter.remoteShared = { [engine, monitor] in
+            engine.isEnabled && monitor.devices.contains { $0.isEnabled && $0.isOpen && !$0.isSeized }
+        }
+        keyFilter.keysBlocked = { [engine, monitor] in
+            engine.isEnabled && monitor.devices.contains { $0.isEnabled && $0.isOpen && $0.keysBlocked }
+        }
         engine.onModeChange = { [hud] mode in
             if Store.defaults.object(forKey: "showModeHUD") as? Bool ?? true { hud.show(mode) }
         }
@@ -65,11 +75,13 @@ final class AppModel: ObservableObject {
         activity = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiatedAllowingIdleSystemSleep, .latencyCritical],
             reason: "Turning remote control presses into pointer and key events")
-        permissions.onChange = { [monitor, permissions] in
+        permissions.onChange = { [monitor, permissions, keyFilter] in
             if permissions.inputMonitoring { monitor.start() }
+            if permissions.accessibility { keyFilter.start() }
         }
         permissions.refresh()
         if permissions.inputMonitoring { monitor.start() }
+        if permissions.accessibility { keyFilter.start() }
     }
 }
 

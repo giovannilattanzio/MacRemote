@@ -13,7 +13,21 @@ public struct KeyModifiers: OptionSet, Hashable, Sendable {
 /// Media and system keys, by their NX_KEYTYPE number (IOKit hidsystem/ev_keymap.h).
 public enum MediaKey: Int32, Sendable {
     case soundUp = 0, soundDown = 1, brightnessUp = 2, brightnessDown = 3
-    case mute = 7, play = 16, next = 17, previous = 18
+    case mute = 7, play = 16, next = 17, previous = 18, fast = 19, rewind = 20
+
+    /// The media key macOS makes from a remote's own transport button,
+    /// when it acts on the remote as a keyboard (macOS 12 does).
+    public init?(remoteUsage usage: HIDUsage) {
+        guard usage.page == HIDUsage.consumerPage else { return nil }
+        switch usage.usage {
+        case 0xCD, 0xB0, 0xB1: self = .play
+        case 0xB5: self = .next
+        case 0xB6: self = .previous
+        case 0xB3: self = .fast
+        case 0xB4: self = .rewind
+        default: return nil
+        }
+    }
 }
 
 /// What an action does on the Mac. The app turns each into CGEvents.
@@ -165,8 +179,11 @@ public enum RemoteAction: String, CaseIterable, Codable, Sendable, Identifiable 
 
     /// What macOS itself does with a usage when the app cannot take the
     /// remote for itself: the remote then behaves as a keyboard, and posting
-    /// the same action again would do it twice. Only keyboard keys: macOS
-    /// does not act on a Fire TV remote's media buttons (tested on macOS 26).
+    /// the same action again would do it twice. Only keyboard keys: macOS 26
+    /// does not act on a Fire TV remote's media buttons, and on macOS 12,
+    /// which does, RemoteKeyFilter drops the media keys it makes from them.
+    /// With the key block on, RemoteKeyFilter also drops these keys on
+    /// macOS 12, where the block alone does not stop them.
     public static func native(for usage: HIDUsage) -> RemoteAction? {
         switch (usage.page, usage.usage) {
         case (HIDUsage.keyboardPage, 0x52): .arrowUp

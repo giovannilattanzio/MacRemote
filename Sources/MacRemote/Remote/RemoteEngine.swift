@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 import os
@@ -19,6 +20,8 @@ final class RemoteEngine: ObservableObject {
     }
 
     @Published var profile: Profile { didSet { save() } }
+    /// Buttons that do something else while a chosen app is in front.
+    @Published var appOverrides: AppOverrides { didSet { saveOverrides() } }
     @Published private(set) var mode: RemoteMode = .navigation
     @Published var isEnabled = true {
         didSet { if !isEnabled { releaseAll() } }
@@ -52,6 +55,8 @@ final class RemoteEngine: ObservableObject {
     private var lastTick: TimeInterval = 0
     /// Injected by the self-test, so time moves on demand.
     var clock: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
+    /// The bundle ID of the app in front. Injected by the self-test.
+    var frontmostApp: () -> String? = { NSWorkspace.shared.frontmostApplication?.bundleIdentifier }
 
     init(defaults: UserDefaults, sink: EffectSink) {
         self.defaults = defaults
@@ -62,10 +67,20 @@ final class RemoteEngine: ObservableObject {
         } else {
             profile = .standard
         }
+        if let data = defaults.data(forKey: "appOverrides"),
+           let saved = try? JSONDecoder().decode(AppOverrides.self, from: data) {
+            appOverrides = saved
+        } else {
+            appOverrides = AppOverrides()
+        }
     }
 
     private func save() {
         if let data = try? JSONEncoder().encode(profile) { defaults.set(data, forKey: "profile") }
+    }
+
+    private func saveOverrides() {
+        if let data = try? JSONEncoder().encode(appOverrides) { defaults.set(data, forKey: "appOverrides") }
     }
 
     func restoreDefaults() { profile = .standard }
@@ -98,7 +113,7 @@ final class RemoteEngine: ObservableObject {
 
     private func press(_ key: RemoteKey, usage: HIDUsage, exclusive: Bool, device: String) {
         guard isEnabled, held[key] == nil else { return }
-        let action = profile.action(for: key, in: mode)
+        let action = appOverrides.action(for: key, app: frontmostApp()) ?? profile.action(for: key, in: mode)
         let byMac = !exclusive && RemoteAction.native(for: usage) == action
         recent.insert(Press(key: key, usage: usage, action: action, device: device,
                             date: .now, handledByMac: byMac), at: 0)

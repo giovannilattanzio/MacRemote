@@ -22,6 +22,7 @@ struct DetailView: View {
         switch model.sidebar {
         case .remote: RemotePage()
         case .buttons: ButtonsPage()
+        case .apps: AppsPage()
         case .devices: DevicesPage()
         }
     }
@@ -255,16 +256,23 @@ struct ActionPicker: View {
             get: { engine.profile.action(for: key, in: mode) },
             set: { engine.profile.set($0, for: key, in: mode) }
         )) {
-            Text(RemoteAction.none.title).tag(RemoteAction.none)
-            ForEach(RemoteAction.Group.allCases, id: \.self) { group in
-                Section(group.rawValue) {
-                    ForEach(RemoteAction.allCases.filter { $0.group == group && $0 != .none }) { action in
-                        Text(action.title).tag(action)
-                    }
+            ActionChoices()
+        }
+        .labelsHidden()
+    }
+}
+
+/// Every action, grouped, as picker items tagged with the action.
+struct ActionChoices: View {
+    var body: some View {
+        Text(RemoteAction.none.title).tag(RemoteAction.none)
+        ForEach(RemoteAction.Group.allCases, id: \.self) { group in
+            Section(group.rawValue) {
+                ForEach(RemoteAction.allCases.filter { $0.group == group && $0 != .none }) { action in
+                    Text(action.title).tag(action)
                 }
             }
         }
-        .labelsHidden()
     }
 }
 

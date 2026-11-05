@@ -19,6 +19,9 @@ enum SampleData {
             .init(id: "mx", name: "MX Master 3S", vendorID: 0x046D, productID: 0xB034,
                   transport: "Bluetooth Low Energy", isFireTV: false, isEnabled: false),
         ])
+        model.engine.appOverrides.add(bundleID: "com.apple.Safari", name: "Safari")
+        model.engine.appOverrides.set(.arrowLeft, for: RemoteKey(.rewind), app: "com.apple.Safari")
+        model.engine.appOverrides.set(.arrowRight, for: RemoteKey(.fastForward), app: "com.apple.Safari")
         let profile = model.engine.profile
         let presses: [(RemoteButton?, HIDUsage, TimeInterval)] = [
             (.select, .key(0x28), 4),
