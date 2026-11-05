@@ -52,12 +52,19 @@ account, no network, and nothing to set up beyond two macOS permissions.
 - **Change what every button does.** Each button gets its own action in each mode,
   picked from nearly 40: keys, app and window switching, clicks and scrolling,
   media and volume, brightness, Mission Control, Spotlight, and display sleep.
+- **Buttons per app.** On the Apps page, a button can do something else while a
+  chosen app is in front. A new app starts with Play/Pause sending Space, for
+  video players that ignore the Mac's media keys.
 - **Learns new buttons.** Press a button MacRemote doesn't know and it appears on
   the Buttons page, ready to set.
 - **Watch it work.** The picture of the remote lights up as you press buttons, and
   the last presses are listed with what each one did.
 - **Keeps macOS out of the way.** Fire TV remotes also act as keyboards. One switch
-  makes only MacRemote respond to them, so a press never acts twice.
+  makes only MacRemote respond to them, so a press never acts twice. Play/Pause
+  never opens Music by itself, and the Mac's own keyboard is never affected.
+- **Battery and notifications.** The remote's battery level shows on the Remote
+  page, in Devices, and in the menu bar. MacRemote can notify you when a remote
+  connects or disconnects, and when its battery is low.
 - **Other devices work too.** Turn on any other connected HID device and it
   acts like a remote.
 - **A real Mac app.** Light and dark mode, a menu bar item, a keyboard shortcut for
@@ -82,15 +89,25 @@ account, no network, and nothing to set up beyond two macOS permissions.
       <p align="center"><b>Devices</b>: choose which remotes and devices to use.</p>
     </td>
   </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/apps-dark.png">
+        <img src="docs/images/apps-light.png" alt="The Apps page: an app with its own actions for Play/Pause, Rewind, and Fast Forward">
+      </picture>
+      <p align="center"><b>Apps</b>: give an app its own buttons.</p>
+    </td>
+    <td width="50%"></td>
+  </tr>
 </table>
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-dark.png">
-    <img src="docs/images/settings-light.png" width="480" alt="Settings: pointer speed, scroll speed, show the mode on screen, open at login">
+    <img src="docs/images/settings-light.png" width="480" alt="Settings: pointer speed, scroll speed, show the mode on screen, connection and low battery notifications, open at login">
   </picture>
   <br>
-  <b>Settings</b>: pointer and scroll speed, the mode badge, and open at login.
+  <b>Settings</b>: pointer and scroll speed, the mode badge, notifications, and open at login.
 </p>
 
 ## What the buttons do at first
@@ -109,7 +126,7 @@ account, no network, and nothing to set up beyond two macOS permissions.
 | Guide | Switch to last app | Switch to last app |
 
 You can change any of these on the Buttons page. **Restore Defaults** (⇧⌘R)
-brings them back.
+brings them back. To change a button in one app only, use the Apps page.
 
 ## Keyboard shortcuts
 
@@ -118,7 +135,8 @@ brings them back.
 | Pause or resume the remote | ⇧⌘P |
 | Switch mode | ⇧⌘M |
 | Restore default buttons | ⇧⌘R |
-| Remote, Buttons, Devices page | ⌘1, ⌘2, ⌘3 |
+| Add an app with its own buttons | ⇧⌘A |
+| Remote, Buttons, Apps, Devices page | ⌘1, ⌘2, ⌘3, ⌘4 |
 | Settings | ⌘, |
 
 These actions are also in the **Remote** menu and the menu bar item.
@@ -144,7 +162,7 @@ That's it. Press **Menu** to try both modes.
 | Permission | What MacRemote uses it for |
 |---|---|
 | Input Monitoring | Reading the remote's buttons |
-| Accessibility | Pressing keys, moving the pointer, and clicking |
+| Accessibility | Pressing keys, moving the pointer, and clicking, and stopping macOS from also acting on the remote |
 
 Permissions stay granted as long as you keep the same copy. Installing a new
 ad hoc build means granting them again: remove the old MacRemote entries with
@@ -160,11 +178,14 @@ ad hoc build means granting them again: remove the old MacRemote entries with
 
 - **`HIDMonitor`** finds HID devices with IOHIDManager and opens Fire TV remotes
   (vendor `0x1949`, or by name), exclusively when macOS allows it.
-- **`RemoteEngine`** looks up each press in the profile for the current mode and
-  runs the action once, repeats it while held, or keeps the pointer moving with
+- **`RemoteEngine`** looks up each press in the front app's own buttons, then in
+  the profile for the current mode, and runs the action once, repeats it while held, or keeps the pointer moving with
   acceleration.
 - **`EventSynth`** posts the keyboard, mouse, scroll, and media events.
-- **`MacRemoteKit`** holds the rules (buttons, actions, profiles, pointer motion)
+- **`RemoteKeyFilter`** is an event tap that drops the keys and media keys macOS
+  makes from a remote it shares with MacRemote. That matters on macOS 12, where
+  the `hidutil` key block doesn't stop them.
+- **`MacRemoteKit`** holds the rules (buttons, actions, profiles, app overrides, pointer motion, battery)
   with no UI, and is covered by unit tests.
 
 ## Build from source
@@ -219,7 +240,7 @@ NOTARY_PROFILE=macremote tools/release.sh
 | Path | What's there |
 |---|---|
 | `Sources/MacRemote/` | The app: AppKit shell, SwiftUI pages, remote input and output |
-| `Sources/MacRemoteKit/` | Buttons, actions, profiles, and pointer motion, with no UI |
+| `Sources/MacRemoteKit/` | Buttons, actions, profiles, app overrides, pointer motion, and battery, with no UI |
 | `Tests/MacRemoteKitTests/` | Unit tests |
 | `Icon/AppIcon.icon` | The Icon Composer app icon |
 | `tools/` | Release, self-test, snapshot, icon, and grid scripts |

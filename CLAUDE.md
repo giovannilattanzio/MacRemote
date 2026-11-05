@@ -56,3 +56,4 @@ advice assumes macOS 26: where it uses a newer API, the macOS 12 rule above wins
 ## Git
 
 - Commit after each working change, with a message that says what the user can now do.
+- When a change adds or changes a feature, update `README.md` in the same commit (features, shortcuts, the screenshots in `docs/images/` from `tools/snap.sh`, how it works).
