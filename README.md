@@ -216,8 +216,10 @@ entries with **–** first.
   element has focus (Accessibility). When the remote moves focus into an editable
   text field, or clicks one, it opens the on-screen keyboard; while it is open the
   engine sends the D-pad, Select, Back, Rewind, and Fast Forward to it, and it
-  types the text into the app in front. Text fields in Chrome and Electron apps
-  may not report focus, so use Show Keyboard there.
+  types the text into the app in front. Browsers report text fields only when an
+  assistive app asks, so on the first remote press in an app it asks once
+  (`AXManualAccessibility` for Chrome and Electron, `AXEnhancedUserInterface`
+  for Firefox). That stays on until the app quits.
 - **`RemoteKeyFilter`** is an event tap that drops the keys and media keys macOS
   makes from a remote it shares with MacRemote. That matters on macOS 12, where
   the `hidutil` key block doesn't stop them, and while the on-screen keyboard is

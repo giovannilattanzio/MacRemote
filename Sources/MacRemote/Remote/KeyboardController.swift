@@ -74,6 +74,7 @@ final class KeyboardController: ObservableObject, KeyboardInput {
     /// Called for every remote press while the keyboard is shut.
     func remotePressed(_ action: RemoteAction) {
         guard opensForTextFields, !isOpen else { return }
+        if showsPanel { Self.exposeAccessibility(of: NSWorkspace.shared.frontmostApplication) }
         trigger.remotePressed(click: action == .leftClick, at: clock()) { focus().element }
         startPolling()
     }
@@ -112,18 +113,61 @@ final class KeyboardController: ObservableObject, KeyboardInput {
         return element
     }()
 
+    /// Apps already asked to build their accessibility tree.
+    private static var exposed: Set<pid_t> = []
+
+    /// Browsers build their accessibility tree only when an assistive app asks,
+    /// and until then report the window as focused, never the text field.
+    /// Chromium and Electron listen for AXManualAccessibility; Firefox for
+    /// AXEnhancedUserInterface, which VoiceOver sets. That one changes how
+    /// some apps animate windows, so only Mozilla apps get it. Once per app.
+    static func exposeAccessibility(of app: NSRunningApplication?) {
+        guard let app, app.processIdentifier != getpid(), !exposed.contains(app.processIdentifier) else { return }
+        exposed.insert(app.processIdentifier)
+        let element = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(element, 0.25)
+        let manual = AXUIElementSetAttributeValue(element, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+        var enhanced = AXError.attributeUnsupported
+        if app.bundleIdentifier?.hasPrefix("org.mozilla.") == true {
+            enhanced = AXUIElementSetAttributeValue(element, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+        }
+        focusLog.info("asked \(app.bundleIdentifier ?? "?", privacy: .public) for its accessibility tree: manual=\(manual.rawValue) enhanced=\(enhanced.rawValue)")
+    }
+
+    nonisolated(unsafe) private static var lastSeen = ""
+    nonisolated private static let focusLog = Logger(subsystem: "com.gilattanzio.macremote", category: "keyboard")
+
+    /// The focused element, from the system, or else from the app in front.
     nonisolated static func systemFocus() -> (element: AXUIElement?, isText: Bool) {
+        let front = NSWorkspace.shared.frontmostApplication
         var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &value) == .success,
-              let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return (nil, false) }
+        var result = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &value)
+        if result != .success, let pid = front?.processIdentifier {
+            let app = AXUIElementCreateApplication(pid)
+            AXUIElementSetMessagingTimeout(app, 0.25)
+            result = AXUIElementCopyAttributeValue(app, kAXFocusedUIElementAttribute as CFString, &value)
+        }
+        let appName = front?.bundleIdentifier ?? "?"
+        guard result == .success, let value, CFGetTypeID(value) == AXUIElementGetTypeID() else {
+            note("focus in \(appName): none (AX error \(result.rawValue))")
+            return (nil, false)
+        }
         let element = value as! AXUIElement
         AXUIElementSetMessagingTimeout(element, 0.25)
         var settable: DarwinBoolean = false
         AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable)
-        let isText = TextInput.accepts(role: string(element, kAXRoleAttribute),
-                                       subrole: string(element, kAXSubroleAttribute),
-                                       editable: settable.boolValue)
+        let role = string(element, kAXRoleAttribute)
+        let subrole = string(element, kAXSubroleAttribute)
+        let isText = TextInput.accepts(role: role, subrole: subrole, editable: settable.boolValue)
+        note("focus in \(appName): role=\(role ?? "-") subrole=\(subrole ?? "-") editable=\(settable.boolValue) text=\(isText)")
         return (element, isText)
+    }
+
+    /// Logs what focus looks like, once per change.
+    nonisolated private static func note(_ line: String) {
+        guard line != lastSeen else { return }
+        lastSeen = line
+        focusLog.info("\(line, privacy: .public)")
     }
 
     nonisolated private static func string(_ element: AXUIElement, _ attribute: String) -> String? {
