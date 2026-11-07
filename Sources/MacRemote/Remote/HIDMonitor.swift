@@ -120,7 +120,7 @@ final class HIDMonitor: ObservableObject {
             let monitor = Unmanaged<HIDMonitor>.fromOpaque(context!).takeUnretainedValue()
             MainActor.assumeIsolated { monitor.removed(device) }
         }, context)
-        IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+        IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
         self.manager = manager
         // macOS updates BatteryPercent on its own schedule; a minute is plenty for a remote.
         batteryTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
@@ -270,7 +270,7 @@ final class HIDMonitor: ObservableObject {
                 monitor.received(page: page, usage: usage, value: int, range: range, isArray: isArray, from: device)
             }
         }, context)
-        IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+        IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
         if seized { seizedRefs.insert(ObjectIdentifier(device)) }
         let page = property(device, kIOHIDPrimaryUsagePageKey) as? Int ?? 0
         let usage = property(device, kIOHIDPrimaryUsageKey) as? Int ?? 0
@@ -339,7 +339,7 @@ final class HIDMonitor: ObservableObject {
 
     private func close(_ id: String) {
         for device in refs[id] ?? [] where opened.contains(ObjectIdentifier(device)) {
-            IOHIDDeviceUnscheduleFromRunLoop(device, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+            IOHIDDeviceUnscheduleFromRunLoop(device, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
             IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
             opened.remove(ObjectIdentifier(device))
             seizedRefs.remove(ObjectIdentifier(device))
