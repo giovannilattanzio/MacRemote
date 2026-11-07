@@ -69,6 +69,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    /// Where donations go. Shown in Settings, the Help menu, and the README.
+    static let donateURL = URL(string: "https://paypal.me/giovannilattanzio")!
+
+    @objc func donate() { NSWorkspace.shared.open(Self.donateURL) }
+
     @objc func toggleEnabled() { model.engine.isEnabled.toggle() }
     @objc func toggleMode() { model.engine.toggleMode() }
     @objc func restoreDefaults() { model.engine.restoreDefaults() }
@@ -143,6 +148,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         window.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
         main.addItem(withTitle: "Window", action: nil, keyEquivalent: "").submenu = window
         NSApp.windowsMenu = window
+
+        let help = NSMenu(title: "Help")
+        help.addItem(item("Donate to MacRemote…", #selector(donate), "d", shift: true))
+        main.addItem(withTitle: "Help", action: nil, keyEquivalent: "").submenu = help
+        NSApp.helpMenu = help
 
         return main
     }

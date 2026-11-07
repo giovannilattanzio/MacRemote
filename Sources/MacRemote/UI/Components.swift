@@ -68,6 +68,7 @@ struct Row<Trailing: View>: View {
     var title: String
     var subtitle: String?
     var symbol: String?
+    var symbolColor: Color = .secondary
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
@@ -75,7 +76,7 @@ struct Row<Trailing: View>: View {
             if let symbol {
                 Image(systemName: Symbol.named(symbol))
                     .frame(width: Space.xl)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(symbolColor)
             }
             VStack(alignment: .leading, spacing: Space.xxs) {
                 Text(title)

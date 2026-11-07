@@ -15,6 +15,7 @@
 <p align="center">
   <a href="https://github.com/giovannilattanzio/MacRemote/actions/workflows/release.yml"><img src="https://github.com/giovannilattanzio/MacRemote/actions/workflows/release.yml/badge.svg" alt="Release workflow status"></a>
   <a href="https://github.com/giovannilattanzio/MacRemote/releases/latest"><img src="https://img.shields.io/github/v/release/giovannilattanzio/MacRemote?logo=github" alt="Download the latest release"></a>
+  <a href="https://paypal.me/giovannilattanzio"><img src="https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal" alt="Donate with PayPal"></a>
 </p>
 
 <p align="center">
@@ -109,10 +110,10 @@ account, no network, and nothing to set up beyond two macOS permissions.
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-dark.png">
-    <img src="docs/images/settings-light.png" width="480" alt="Settings: pointer speed, scroll speed, show the mode on screen, connection and low battery notifications, open at login">
+    <img src="docs/images/settings-light.png" width="480" alt="Settings: pointer speed, scroll speed, show the mode on screen, connection and low battery notifications, open at login, and a button to donate">
   </picture>
   <br>
-  <b>Settings</b>: pointer and scroll speed, the mode badge, notifications, and open at login.
+  <b>Settings</b>: pointer and scroll speed, the mode badge, notifications, open at login, and a Donate button.
 </p>
 
 ## What the buttons do at first
@@ -143,8 +144,16 @@ brings them back. To change a button in one app only, use the Apps page.
 | Add an app with its own buttons | ⇧⌘A |
 | Remote, Buttons, Apps, Devices page | ⌘1, ⌘2, ⌘3, ⌘4 |
 | Settings | ⌘, |
+| Donate (Help menu) | ⇧⌘D |
 
 These actions are also in the **Remote** menu and the menu bar item.
+
+## Support
+
+Comfy? Good, that's the idea! MacRemote is free, and if it saves you a few
+trips to the keyboard, a little thank-you is always welcome 🛋️
+[Donate with PayPal](https://paypal.me/giovannilattanzio). The same link is in
+**Settings > Support** and **Help > Donate to MacRemote…**.
 
 ## Get started
 

@@ -37,6 +37,15 @@ struct SettingsView: View {
                 CardDivider()
                 OpenAtLoginRow()
             }
+            Card(title: "Support") {
+                Row(title: "Support MacRemote",
+                    subtitle: "Comfy? Good, that's the idea! If MacRemote saves you a few trips to the keyboard, a little thank-you is always welcome 🛋️",
+                    symbol: "heart.fill",
+                    symbolColor: Color(nsColor: .systemRed)) {
+                    Button("Donate…") { NSWorkspace.shared.open(AppDelegate.donateURL) }
+                        .help("Opens PayPal in your browser")
+                }
+            }
         }
         .padding(Space.margin)
         .frame(width: Width.settings)
