@@ -2,6 +2,6 @@
 
 Things to improve in MacRemote.
 
-- [ ] **GitHub Action for releases**: build the universal app with `tools/release.sh` on a tag push and attach it to a GitHub release (Developer ID signing and notarization when the secrets are set, ad hoc otherwise).
+- [x] **GitHub Action for releases**: pushing a `v*` tag builds the universal app with `tools/release.sh`, signs it with the self-signed "MacRemote Signing" certificate from the repository secrets, and attaches the zip to a GitHub release. Developer ID and notarization can come later by changing the secrets.
 - [ ] **On-screen keyboard for text fields**: when a text field gets focus (clicked or selected with the remote), show a keyboard you can type on with the remote.
-- [ ] **Keep permissions across builds**: stop losing Input Monitoring and Accessibility after every rebuild or update. Ad hoc signing gives each build a new identity, so sign every build with the same certificate (a self-signed local one for development, Developer ID for releases) so macOS keeps the permissions.
+- [x] **Keep permissions across builds** (releases and `build.sh` sign with the "MacRemote Signing" certificate; local builds need it imported into the login keychain once, see README.md): stop losing Input Monitoring and Accessibility after every rebuild or update. Ad hoc signing gives each build a new identity, so sign every build with the same certificate (a self-signed local one for development, Developer ID for releases) so macOS keeps the permissions.
