@@ -280,6 +280,10 @@ certificate, and attaches `MacRemote-<version>.zip` to a new release:
 git tag v0.2 && git push origin v0.2
 ```
 
+To try the release build first, open **Actions > Release > Run workflow** on
+GitHub. A test run does the same tests, build, and signing but publishes nothing:
+the zip is a download on the run's page for 7 days.
+
 The certificate is never in the repo. It lives in two repository secrets
 (**Settings > Secrets and variables > Actions**): `CERT_P12_BASE64` (the output of
 `base64 -i cert.p12`) and `CERT_PASSWORD`. Keep a backup of `cert.p12`: a new

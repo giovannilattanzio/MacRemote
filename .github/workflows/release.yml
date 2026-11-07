@@ -1,6 +1,9 @@
 # Push a tag like v0.2 to build MacRemote, sign it with the self-signed
 # "MacRemote Signing" certificate, and publish MacRemote-0.2.zip on Releases.
 #
+# Actions > Release > Run workflow is a test run: it does the same build and
+# signing but publishes nothing; the zip is a download on the run's page.
+#
 # Repository secrets (Settings > Secrets and variables > Actions):
 #   CERT_P12_BASE64  the certificate and key: base64 -i cert.p12
 #   CERT_PASSWORD    the .p12 password
@@ -9,6 +12,7 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -51,9 +55,22 @@ jobs:
       - name: Build, sign, and zip
         env:
           SIGN_IDENTITY: MacRemote Signing
-        run: VERSION="${GITHUB_REF_NAME#v}" tools/release.sh
+        # A test run has no tag, so the version comes from Info.plist.in.
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then export VERSION="${GITHUB_REF_NAME#v}"; fi
+          tools/release.sh
+
+      - name: Keep the zip of a test run
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: MacRemote-test-${{ github.run_number }}
+          path: dist/*.zip
+          retention-days: 7
+          if-no-files-found: error
 
       - name: Publish the release
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" dist/*.zip --title "MacRemote ${GITHUB_REF_NAME#v}" --generate-notes
