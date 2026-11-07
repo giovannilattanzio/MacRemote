@@ -246,6 +246,7 @@ private final class KeyboardPanel: NSPanel {
 }
 
 /// Keys respond to the first click, though the panel is never active.
-private final class FirstClickHostingView<Content: View>: NSHostingView<Content> {
+/// Not generic: Swift 6.3.3 crashes optimizing a generic NSHostingView subclass's deinit.
+private final class FirstClickHostingView: NSHostingView<KeyboardView> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
