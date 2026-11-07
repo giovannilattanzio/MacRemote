@@ -143,12 +143,14 @@ These actions are also in the **Remote** menu and the menu bar item.
 
 ## Get started
 
-1. Get a zip made with [`tools/release.sh`](#make-a-copy-for-other-macs), or [build it yourself](#build-from-source).
+1. Download the latest `MacRemote-<version>.zip` from
+   [Releases](https://github.com/giovannilattanzio/MacRemote/releases), or
+   [build it yourself](#build-from-source).
 2. Unzip it and drag **MacRemote** into **Applications**.
 3. Open it. If macOS says it can't verify the app, click **Done**, then open
    **System Settings > Privacy & Security** (on macOS 12: **System Preferences >
    Security & Privacy > General**) and click **Open Anyway** next to MacRemote.
-   Confirm with your password. You only do this once.
+   Confirm with your password. You do this once for each version you download.
 4. In MacRemote, click **Allow…** for **Input Monitoring** and **Accessibility**,
    and switch MacRemote on in both lists. The page updates by itself.
 5. Pair the remote. Unplug the Fire TV it was paired with, hold **Home** on the
@@ -164,9 +166,10 @@ That's it. Press **Menu** to try both modes.
 | Input Monitoring | Reading the remote's buttons |
 | Accessibility | Pressing keys, moving the pointer, and clicking, and stopping macOS from also acting on the remote |
 
-Permissions stay granted as long as you keep the same copy. Installing a new
-ad hoc build means granting them again: remove the old MacRemote entries with
-**–** first.
+Permissions stay granted when you update: every release is signed with the same
+certificate, so macOS knows it's the same app. Only an ad hoc build (one made
+without the certificate) needs them granted again: remove the old MacRemote
+entries with **–** first.
 
 ## How it works
 
@@ -225,7 +228,32 @@ it was signed (the script uses the best signing it finds):
 |---|---|
 | Developer ID + notarized | Opens with no warning |
 | Developer ID, not notarized | Blocked once, then Open Anyway |
-| Ad hoc (no certificate, the default here) | Blocked once, then Open Anyway |
+| Self-signed "MacRemote Signing" (what Releases use) | Blocked once, then Open Anyway; permissions survive updates |
+| Ad hoc (no certificate) | Blocked once, then Open Anyway; permissions granted again after every update |
+
+### Publish a release
+
+Push a version tag. GitHub Actions (`.github/workflows/release.yml`) runs the unit
+tests, builds with `tools/release.sh`, signs with the "MacRemote Signing"
+certificate, and attaches `MacRemote-<version>.zip` to a new release:
+
+```bash
+git tag v0.2 && git push origin v0.2
+```
+
+The certificate is never in the repo. It lives in two repository secrets
+(**Settings > Secrets and variables > Actions**): `CERT_P12_BASE64` (the output of
+`base64 -i cert.p12`) and `CERT_PASSWORD`. Keep a backup of `cert.p12`: a new
+certificate makes every Mac grant the permissions once more.
+
+To sign your own builds with it too, so `./build.sh` keeps the permissions across
+rebuilds, import it once into your login keychain:
+
+```bash
+security import cert.p12 -k ~/Library/Keychains/login.keychain-db -T /usr/bin/codesign
+```
+
+### Notarize
 
 To notarize you need the Apple Developer Program (paid). Once you have a
 "Developer ID Application" certificate in the keychain:

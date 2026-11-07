@@ -19,7 +19,7 @@ know are learned by usage and show in the Buttons page.
 - `Sources/MacRemoteKit/` rules and data logic with no SwiftUI. Tests in `Tests/MacRemoteKitTests/`.
 - `Package.swift` a Swift package. There is no Xcode project.
 - `build.sh` builds, signs, and installs `/Applications/MacRemote.app`.
-- `tools/release.sh` builds a universal copy for other Macs in `dist/` (Developer ID and notarization when available, ad hoc otherwise). Install steps are in `README.md`.
+- `tools/release.sh` builds a universal copy for other Macs in `dist/` (Developer ID and notarization when available, then the self-signed "MacRemote Signing" certificate, ad hoc otherwise); `.github/workflows/release.yml` runs it on GitHub for every `v*` tag. Install steps are in `README.md`.
 - `Icon/AppIcon.icon` the app icon, an Icon Composer file (JSON plus SVG layers). `build.sh` compiles it with `tools/make_icon.sh`; `tools/icon_review.sh` renders every look into one PNG.
 - `docs/` the brief, the screen index, and the user stories, when they exist.
 
@@ -32,7 +32,8 @@ know are learned by usage and show in the Buttons page.
   It writes `/tmp/MacRemote-shots/<page>-light.png` and `-dark.png` for every sidebar page, and `settings-light.png` and `settings-dark.png`, then quits. `APP_SNAPSHOT_PAGES=remote,settings tools/snap.sh` limits the pages.
 - Snapshots, seed data, and the self-test refuse to run without `APP_STORE`. With it set, settings go to a throwaway defaults domain and no real remote is opened.
 - The self-test drives the real engine with simulated presses into a recorder; nothing is posted to the Mac.
-- Ad hoc builds lose Input Monitoring and Accessibility after every rebuild: remove MacRemote from both lists in Privacy & Security and add it again.
+- `build.sh` and `tools/release.sh` sign with the self-signed "MacRemote Signing" certificate when it's in the keychain, so Input Monitoring and Accessibility survive rebuilds. Without it they sign ad hoc, and both permissions must be removed and added again after every rebuild.
+- Releases: pushing a `v*` tag runs `.github/workflows/release.yml`, which signs with the certificate from the `CERT_P12_BASE64` and `CERT_PASSWORD` secrets and publishes the zip on GitHub Releases.
 - Then check the grid: `tools/grid-lint.sh` prints PASS.
 - A change is done when the build has no errors or warnings, the grid check passes, and you looked at the light and dark snapshots. Snapshots run on this Mac's macOS only: the macOS 12 guarantee comes from the compiler and the rules above.
 

@@ -8,7 +8,14 @@
 #      signed, notarized, and stapled. Opens on any Mac with no warning.
 #   2. A Developer ID certificate without NOTARY_PROFILE: signed but not notarized.
 #      Other Macs still block the first open.
-#   3. Nothing: signed ad hoc. Other Macs block the first open; see README.md.
+#   3. The self-signed "MacRemote Signing" certificate (what GitHub Actions uses):
+#      other Macs block the first open, but every version counts as the same app,
+#      so Input Monitoring and Accessibility stay granted across updates.
+#   4. Nothing: signed ad hoc. Other Macs block the first open, and every update
+#      needs the permissions granted again; see README.md.
+#
+# VERSION=0.2 sets the version (the release workflow passes the tag); otherwise
+# the one in Info.plist.in.
 #
 # Usage: tools/release.sh
 #        SIGN_IDENTITY="Developer ID Application: Name (TEAMID)" NOTARY_PROFILE=macremote tools/release.sh
@@ -22,6 +29,10 @@ identity="${SIGN_IDENTITY:-}"
 if [[ -z "$identity" ]]; then
   identity=$(security find-identity -v -p codesigning 2>/dev/null | grep -m1 -o '"Developer ID Application: [^"]*"' | tr -d '"' || true)
 fi
+if [[ -z "$identity" ]]; then
+  # Self-signed certificates are not trusted, so find-identity lists them without -v.
+  identity=$(security find-identity -p codesigning 2>/dev/null | grep -m1 -o '"MacRemote Signing"' | tr -d '"' || true)
+fi
 [[ -n "$identity" ]] || identity=-
 
 echo "building universal release…"
@@ -30,18 +41,22 @@ swift build -c release --arch arm64 --arch x86_64 --package-path "$here" --scrat
 bin="$scratch/apple/Products/Release/$name"
 [[ -x "$bin" ]] || { echo "build failed"; exit 1; }
 
-version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$here/Info.plist.in")
+version="${VERSION:-$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$here/Info.plist.in")}"
 app="$dist/$name.app"
 rm -rf "$dist"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin" "$app/Contents/MacOS/$name"
 sed -e "s/__BUILD__/$(date +%Y%m%d%H%M)/" "$here/Info.plist.in" > "$app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$app/Contents/Info.plist"
 [[ -f "$here/Resources/Assets.car" ]] || "$here/tools/make_icon.sh"
 cp -X "$here/Resources/Assets.car" "$here/Resources/AppIcon.icns" "$app/Contents/Resources/"
 xattr -cr "$app"
 
 if [[ "$identity" == "-" ]]; then
   codesign --force --sign - "$app"
+elif [[ "$identity" != "Developer ID Application:"* ]]; then
+  # Self-signed: Apple's timestamp server and notarization do not apply.
+  codesign --force --sign "$identity" "$app"
 else
   # Notarization needs the hardened runtime and a secure timestamp.
   codesign --force --options runtime --timestamp --sign "$identity" "$app"
@@ -59,8 +74,10 @@ if [[ "$identity" != "-" && -n "${NOTARY_PROFILE:-}" ]]; then
   ditto -c -k --keepParent "$app" "$zip"
   spctl --assess --type execute --verbose "$app"
   echo "notarized: opens on any Mac"
-elif [[ "$identity" != "-" ]]; then
+elif [[ "$identity" == "Developer ID Application:"* ]]; then
   echo "signed with $identity, not notarized: set NOTARY_PROFILE to notarize"
+elif [[ "$identity" != "-" ]]; then
+  echo "signed with $identity: other Macs need Open Anyway once, permissions survive updates"
 else
   echo "signed ad hoc: other Macs need Open Anyway once (README.md)"
 fi

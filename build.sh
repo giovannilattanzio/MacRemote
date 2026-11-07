@@ -14,12 +14,21 @@ config=release
 [[ " $* " == *" --debug "* ]] && config=debug
 
 # Sign with your Apple Development certificate when you have one (Xcode >
-# Settings > Accounts). Otherwise sign ad hoc, which is fine for your own Mac.
+# Settings > Accounts), else the self-signed "MacRemote Signing" certificate
+# (README.md), so Input Monitoring and Accessibility survive rebuilds.
+# Otherwise sign ad hoc, and grant both permissions again after every build.
 identity="${SIGN_IDENTITY:-}"
 if [[ -z "$identity" ]]; then
   identity=$(security find-identity -v -p codesigning 2>/dev/null | grep -m1 -o '"Apple Development: [^"]*"' | tr -d '"' || true)
 fi
-[[ -n "$identity" ]] || identity=-
+if [[ -z "$identity" ]]; then
+  # Self-signed certificates are not trusted, so find-identity lists them without -v.
+  identity=$(security find-identity -p codesigning 2>/dev/null | grep -m1 -o '"MacRemote Signing"' | tr -d '"' || true)
+fi
+if [[ -z "$identity" ]]; then
+  identity=-
+  echo "warning: signing ad hoc; grant Input Monitoring and Accessibility again after this build"
+fi
 
 swift build -c $config --package-path "$here" --scratch-path "$scratch" 2>&1 | grep -E "error|warning|Build complete" | grep -v "^\[" || true
 bin="$scratch/$config/$name"

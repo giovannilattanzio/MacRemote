@@ -1,0 +1,57 @@
+# Push a tag like v0.2 to build MacRemote, sign it with the self-signed
+# "MacRemote Signing" certificate, and publish MacRemote-0.2.zip on Releases.
+#
+# Repository secrets (Settings > Secrets and variables > Actions):
+#   CERT_P12_BASE64  the certificate and key: base64 -i cert.p12
+#   CERT_PASSWORD    the .p12 password
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    env:
+      KEYCHAIN: ${{ runner.temp }}/signing.keychain-db
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unit tests
+        run: swift test --scratch-path "$RUNNER_TEMP/test-build"
+
+      - name: Import the signing certificate
+        env:
+          CERT_P12_BASE64: ${{ secrets.CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+        run: |
+          [[ -n "$CERT_P12_BASE64" && -n "$CERT_PASSWORD" ]] || { echo "::error::Add the CERT_P12_BASE64 and CERT_PASSWORD secrets"; exit 1; }
+          p12="$RUNNER_TEMP/cert.p12"
+          kcpass=$(uuidgen)
+          echo "$CERT_P12_BASE64" | base64 --decode > "$p12"
+          security create-keychain -p "$kcpass" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$kcpass" "$KEYCHAIN"
+          security import "$p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$kcpass" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm "$p12"
+          security find-identity -p codesigning "$KEYCHAIN"
+
+      - name: Build, sign, and zip
+        env:
+          SIGN_IDENTITY: MacRemote Signing
+        run: VERSION="${GITHUB_REF_NAME#v}" tools/release.sh
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.zip --title "MacRemote ${GITHUB_REF_NAME#v}" --generate-notes
+
+      - name: Remove the keychain
+        if: always()
+        run: security delete-keychain "$KEYCHAIN" || true
