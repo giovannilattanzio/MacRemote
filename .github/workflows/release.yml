@@ -16,8 +16,6 @@ permissions:
 jobs:
   release:
     runs-on: macos-26
-    env:
-      KEYCHAIN: ${{ runner.temp }}/signing.keychain-db
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +28,7 @@ jobs:
           CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
         run: |
           [[ -n "$CERT_P12_BASE64" && -n "$CERT_PASSWORD" ]] || { echo "::error::Add the CERT_P12_BASE64 and CERT_PASSWORD secrets"; exit 1; }
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
           p12="$RUNNER_TEMP/cert.p12"
           kcpass=$(uuidgen)
           echo "$CERT_P12_BASE64" | base64 --decode > "$p12"
@@ -54,4 +53,4 @@ jobs:
 
       - name: Remove the keychain
         if: always()
-        run: security delete-keychain "$KEYCHAIN" || true
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
