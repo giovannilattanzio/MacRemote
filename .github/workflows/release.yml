@@ -17,7 +17,9 @@ jobs:
   release:
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      # Pinned to a commit so a changed tag cannot run new code next to the signing
+      # certificate. Dependabot (.github/dependabot.yml) proposes updates.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # The Xcode this app is built and tested with locally. Xcode 26.6 (Swift 6.3.3)
       # crashed compiling MacRemote in release mode.

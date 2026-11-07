@@ -1,0 +1,8 @@
+# Weekly pull requests that update the GitHub Actions in .github/workflows,
+# keeping their commit pins current. The app has no Swift package dependencies.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
