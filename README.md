@@ -168,6 +168,9 @@ trips to the keyboard, a little thank-you is always welcome 🛋️
 [Donate with PayPal](https://paypal.me/giovannilattanzio). The same link is in
 **Settings > Support** and **Help > Donate to MacRemote…**.
 
+Found a security problem? Please report it privately, as [SECURITY.md](SECURITY.md)
+explains, not in a public issue.
+
 ## Get started
 
 1. Download the latest `MacRemote-<version>.zip` from
