@@ -13,6 +13,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/giovannilattanzio/MacRemote/actions/workflows/release.yml"><img src="https://github.com/giovannilattanzio/MacRemote/actions/workflows/release.yml/badge.svg" alt="Release workflow status"></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/macOS-12.7%2B-black?logo=apple" alt="macOS 12.7 or later">
   <img src="https://img.shields.io/badge/Apple%20silicon%20%2B%20Intel-universal-black" alt="Universal">
   <img src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white" alt="Swift 6">
