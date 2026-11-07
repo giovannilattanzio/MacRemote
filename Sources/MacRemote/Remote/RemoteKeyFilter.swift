@@ -22,6 +22,8 @@ final class RemoteKeyFilter {
     var remoteShared: () -> Bool = { false }
     /// A remote in use has "Only MacRemote responds" on, so its keys are dropped too.
     var keysBlocked: () -> Bool = { false }
+    /// The on-screen keyboard is open: the remote types on it, so its keys are dropped too.
+    var keyboardOpen: () -> Bool = { false }
 
     private var media = MediaKeyGuard()
     private var keys = KeyGuard()
@@ -38,7 +40,7 @@ final class RemoteKeyFilter {
         let time = now
         media.remote(usage, at: time)
         keys.remote(usage, pressed: pressed, at: time)
-        if pressed, keysBlocked(), let code = KeyGuard.keyCode(for: usage),
+        if pressed, keysBlocked() || keyboardOpen(), let code = KeyGuard.keyCode(for: usage),
            let seen = passed[code], time - seen <= KeyGuard.window {
             log.error("key \(code) from the remote reached macOS before its report")
         }
@@ -87,7 +89,7 @@ final class RemoteKeyFilter {
         let code = UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
         let time = now
         let fromRemote = keys.cameFromRemote(code, at: time)
-        guard keysBlocked() else {
+        guard keysBlocked() || keyboardOpen() else {
             if fromRemote { log.info("key \(code) from the remote passed: Only MacRemote responds is off") }
             return true
         }

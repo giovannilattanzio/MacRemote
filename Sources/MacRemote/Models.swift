@@ -37,6 +37,7 @@ final class AppModel: ObservableObject {
     let hud = ModeHUD()
     let notifier = RemoteNotifier(defaults: Store.defaults)
     let keyFilter = RemoteKeyFilter()
+    let keyboard: KeyboardController
 
     @Published var sidebar: SidebarItem = .remote
     /// Keeps App Nap away. A napping app gets its timers slowed to seconds,
@@ -45,6 +46,17 @@ final class AppModel: ObservableObject {
 
     init(sink: EffectSink = EventSynth()) {
         engine = RemoteEngine(defaults: Store.defaults, sink: sink)
+        let typist = EventSynth()
+        keyboard = KeyboardController(defaults: Store.defaults) { output in
+            switch output {
+            case .text(let text): typist.type(text)
+            case .delete: typist.press(51)
+            case .returnKey: typist.press(36)
+            case .hide: break
+            }
+        }
+        engine.keyboard = keyboard
+        engine.onPress = { [keyboard] action in keyboard.remotePressed(action) }
         monitor = HIDMonitor(defaults: Store.defaults)
         monitor.onInput = { [engine, keyFilter] usage, pressed, device in
             if engine.isEnabled, !device.isSeized { keyFilter.remote(usage, pressed: pressed) }
@@ -60,6 +72,7 @@ final class AppModel: ObservableObject {
         keyFilter.keysBlocked = { [engine, monitor] in
             engine.isEnabled && monitor.devices.contains { $0.isEnabled && $0.isOpen && $0.keysBlocked }
         }
+        keyFilter.keyboardOpen = { [keyboard] in keyboard.holdsRemoteKeys }
         engine.onModeChange = { [hud] mode in
             if Store.defaults.object(forKey: "showModeHUD") as? Bool ?? true { hud.show(mode) }
         }

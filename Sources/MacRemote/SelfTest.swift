@@ -116,6 +116,75 @@ enum SelfTest {
                   RemoteEngine(defaults: Store.defaults, sink: recorder).appOverrides == engine.appOverrides)
             engine.appOverrides.remove(app: "com.example.player")
 
+            // On-screen keyboard: the engine routes the D-pad, Select, Back,
+            // Rewind, and Fast Forward to it while it is open.
+            var typed: [OnScreenKeyboard.Output] = []
+            let keyboard = KeyboardController(defaults: Store.defaults) { typed.append($0) }
+            keyboard.showsPanel = false
+            keyboard.clock = { now }
+            let field = AXUIElementCreateApplication(1)
+            let button = AXUIElementCreateApplication(2)
+            var focused: (element: AXUIElement?, isText: Bool) = (button, false)
+            keyboard.focus = { focused }
+            engine.keyboard = keyboard
+            engine.onPress = { keyboard.remotePressed($0) }
+            engine.setMode(.pointer)
+            @MainActor func tap(_ usage: HIDUsage) { press(usage); release(usage) }
+
+            recorder.log = []
+            tap(.key(0x4F))
+            focused = (field, true)
+            keyboard.check()
+            check("the keyboard opens when the remote moves focus into a text field", keyboard.isOpen)
+            recorder.log = []
+            let movedBefore = recorder.moved.dx
+            tap(.key(0x4F)); tap(.key(0x28))
+            check("Right then Select types w", typed == [.text("w")], "\(typed)")
+            tap(.consumer(0xB4)); tap(.consumer(0xB3))
+            check("Rewind deletes and Fast Forward adds a space", typed.suffix(2) == [.delete, .text(" ")], "\(typed)")
+            check("keyboard buttons do not reach the Mac", recorder.log.isEmpty && recorder.moved.dx == movedBefore, "\(recorder.log)")
+            tap(.consumer(0xE9))
+            check("Volume Up still changes the volume", recorder.log == ["+volumeUp", "-volumeUp"], "\(recorder.log)")
+            tap(.consumer(0x224))
+            check("Back closes the keyboard", !keyboard.isOpen)
+            press(.key(0x4F)); advance(0.1); release(.key(0x4F))
+            keyboard.check()
+            check("the D-pad moves the pointer again after it closes", !keyboard.isOpen && recorder.moved.dx > movedBefore)
+
+            now += 10
+            focused = (button, false)
+            keyboard.check()
+            focused = (field, true)
+            keyboard.check()
+            check("a text field focused without the remote leaves it shut", !keyboard.isOpen)
+            tap(.key(0x4F))
+            keyboard.check()
+            check("pressing a button while a field already has focus leaves it shut", !keyboard.isOpen)
+            tap(.key(0x28))
+            keyboard.check()
+            check("clicking a text field with the remote opens it", keyboard.isOpen)
+            focused = (button, false)
+            keyboard.check()
+            check("one look away from the field keeps it open", keyboard.isOpen)
+            keyboard.check()
+            check("focus leaving text fields closes it", !keyboard.isOpen)
+
+            engine.profile.set(.showKeyboard, for: RemoteKey(.voice), in: .pointer)
+            tap(.consumer(0x221))
+            check("the Show Keyboard action opens it anywhere", keyboard.isOpen)
+            keyboard.check(); keyboard.check()
+            check("an opened-by-hand keyboard stays open away from text fields", keyboard.isOpen)
+            keyboard.close()
+            Store.defaults.set(false, forKey: KeyboardController.settingKey)
+            tap(.key(0x28))
+            focused = (field, true)
+            keyboard.check()
+            check("with the setting off, text fields do not open it", !keyboard.isOpen)
+            Store.defaults.removeObject(forKey: KeyboardController.settingKey)
+            engine.keyboard = nil
+            engine.onPress = nil
+            engine.restoreDefaults()
+
             var mediaGuard = MediaKeyGuard()
             mediaGuard.remote(playPause, at: 50)
             check("macOS's own Play key from a shared remote is dropped",

@@ -13,6 +13,13 @@ protocol EffectSink: AnyObject {
     func scroll(dx: Double, dy: Double)
 }
 
+/// The on-screen keyboard as the engine sees it: a sink for the actions in
+/// KeyboardButtons while it is open.
+protocol KeyboardInput: EffectSink {
+    var isOpen: Bool { get }
+    func open()
+}
+
 /// Posts keyboard, media, and mouse events to the Mac. Needs Accessibility.
 final class EventSynth: EffectSink {
     private let source = CGEventSource(stateID: .hidSystemState)
@@ -36,7 +43,7 @@ final class EventSynth: EffectSink {
             process.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
             process.arguments = ["displaysleepnow"]
             try? process.run()
-        case .none, .move, .scroll, .toggleMode: break
+        case .none, .move, .scroll, .toggleMode, .keyboard: break
         }
     }
 
@@ -87,6 +94,20 @@ final class EventSynth: EffectSink {
             post(keyCode, down: false, flags: flags)
         }
     }
+
+    /// Types text into the app in front, whatever the keyboard layout.
+    func type(_ text: String) {
+        for down in [true, false] {
+            let event = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: down)
+            let units = Array(text.utf16)
+            event?.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
+            event?.setIntegerValueField(.eventSourceUserData, value: RemoteKeyFilter.marker)
+            event?.post(tap: .cghidEventTap)
+        }
+    }
+
+    /// Presses one key with no modifiers.
+    func press(_ code: UInt16) { key(code, []) }
 
     private func post(_ code: CGKeyCode, down: Bool, flags: CGEventFlags) {
         let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down)

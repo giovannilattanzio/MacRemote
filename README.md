@@ -57,10 +57,16 @@ account, no network, and nothing to set up beyond two macOS permissions.
   cross the screen. Pointer and scroll speed are set in Settings.
 - **Change what every button does.** Each button gets its own action in each mode,
   picked from nearly 40: keys, app and window switching, clicks and scrolling,
-  media and volume, brightness, Mission Control, Spotlight, and display sleep.
+  media and volume, brightness, Mission Control, Spotlight, the on-screen keyboard, and display sleep.
 - **Buttons per app.** On the Apps page, a button can do something else while a
   chosen app is in front. A new app starts with Play/Pause sending Space, for
   video players that ignore the Mac's media keys.
+- **A keyboard on screen.** Select a text field with the remote (move to it, or
+  click it in Pointer mode) and a keyboard appears. Move over the keys with the
+  D-pad and press Select to type; Rewind deletes, Fast Forward adds a space, and
+  Back closes it. Shift, numbers, and symbols are one key away. It types into the
+  app in front, which keeps its focus. Turn it off in Settings, or open it any
+  time with the Show Keyboard action (⇧⌘K).
 - **Learns new buttons.** Press a button MacRemote doesn't know and it appears on
   the Buttons page, ready to set.
 - **Watch it work.** The picture of the remote lights up as you press buttons, and
@@ -103,17 +109,23 @@ account, no network, and nothing to set up beyond two macOS permissions.
       </picture>
       <p align="center"><b>Apps</b>: give an app its own buttons.</p>
     </td>
-    <td width="50%"></td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/keyboard-dark.png">
+        <img src="docs/images/keyboard-light.png" alt="The on-screen keyboard: letter keys with one highlighted, Shift, 123, space, delete, return, and a hide key">
+      </picture>
+      <p align="center"><b>Keyboard</b>: type into any text field with the remote.</p>
+    </td>
   </tr>
 </table>
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-dark.png">
-    <img src="docs/images/settings-light.png" width="480" alt="Settings: pointer speed, scroll speed, show the mode on screen, connection and low battery notifications, open at login, and a button to donate">
+    <img src="docs/images/settings-light.png" width="480" alt="Settings: pointer speed, scroll speed, show the mode on screen, the keyboard for text fields, connection and low battery notifications, open at login, and a button to donate">
   </picture>
   <br>
-  <b>Settings</b>: pointer and scroll speed, the mode badge, notifications, open at login, and a Donate button.
+  <b>Settings</b>: pointer and scroll speed, the mode badge, the on-screen keyboard, notifications, open at login, and a Donate button.
 </p>
 
 ## What the buttons do at first
@@ -140,6 +152,7 @@ brings them back. To change a button in one app only, use the Apps page.
 |---|---|
 | Pause or resume the remote | ⇧⌘P |
 | Switch mode | ⇧⌘M |
+| Show or hide the on-screen keyboard | ⇧⌘K |
 | Restore default buttons | ⇧⌘R |
 | Add an app with its own buttons | ⇧⌘A |
 | Remote, Buttons, Apps, Devices page | ⌘1, ⌘2, ⌘3, ⌘4 |
@@ -199,10 +212,17 @@ entries with **–** first.
   the profile for the current mode, and runs the action once, repeats it while held, or keeps the pointer moving with
   acceleration.
 - **`EventSynth`** posts the keyboard, mouse, scroll, and media events.
+- **`KeyboardController`** watches, for a few seconds after each press, which
+  element has focus (Accessibility). When the remote moves focus into an editable
+  text field, or clicks one, it opens the on-screen keyboard; while it is open the
+  engine sends the D-pad, Select, Back, Rewind, and Fast Forward to it, and it
+  types the text into the app in front. Text fields in Chrome and Electron apps
+  may not report focus, so use Show Keyboard there.
 - **`RemoteKeyFilter`** is an event tap that drops the keys and media keys macOS
   makes from a remote it shares with MacRemote. That matters on macOS 12, where
-  the `hidutil` key block doesn't stop them.
-- **`MacRemoteKit`** holds the rules (buttons, actions, profiles, app overrides, pointer motion, battery)
+  the `hidutil` key block doesn't stop them, and while the on-screen keyboard is
+  open, so the D-pad doesn't also move the text cursor.
+- **`MacRemoteKit`** holds the rules (buttons, actions, profiles, app overrides, pointer motion, battery, the on-screen keyboard)
   with no UI, and is covered by unit tests.
 
 ## Build from source
@@ -282,7 +302,7 @@ NOTARY_PROFILE=macremote tools/release.sh
 | Path | What's there |
 |---|---|
 | `Sources/MacRemote/` | The app: AppKit shell, SwiftUI pages, remote input and output |
-| `Sources/MacRemoteKit/` | Buttons, actions, profiles, app overrides, pointer motion, and battery, with no UI |
+| `Sources/MacRemoteKit/` | Buttons, actions, profiles, app overrides, pointer motion, battery, and the on-screen keyboard, with no UI |
 | `Tests/MacRemoteKitTests/` | Unit tests |
 | `Icon/AppIcon.icon` | The Icon Composer app icon |
 | `tools/` | Release, self-test, snapshot, icon, and grid scripts |
