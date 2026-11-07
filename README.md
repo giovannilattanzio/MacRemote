@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="https://github.com/giovannilattanzio/MacRemote/actions/workflows/release.yml"><img src="https://github.com/giovannilattanzio/MacRemote/actions/workflows/release.yml/badge.svg" alt="Release workflow status"></a>
-  <a href="https://github.com/giovannilattanzio/MacRemote/releases/latest"><img src="https://img.shields.io/badge/download-latest%20release-blue?logo=github" alt="Download the latest release"></a>
+  <a href="https://github.com/giovannilattanzio/MacRemote/releases/latest"><img src="https://img.shields.io/github/v/release/giovannilattanzio/MacRemote?logo=github" alt="Download the latest release"></a>
 </p>
 
 <p align="center">
