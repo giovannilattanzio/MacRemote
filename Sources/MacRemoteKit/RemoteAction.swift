@@ -43,6 +43,7 @@ public enum Effect: Equatable, Sendable {
     case scroll(dx: Double, dy: Double)
     case missionControl, sleepDisplay
     case toggleMode
+    case keyboard
 }
 
 /// Everything a remote button can be set to.
@@ -59,7 +60,7 @@ public enum RemoteAction: String, CaseIterable, Codable, Sendable, Identifiable 
     case playPause, nextTrack, previousTrack, volumeUp, volumeDown, mute
     case brightnessUp, brightnessDown
     // System
-    case missionControl, sleepDisplay, toggleMode
+    case missionControl, sleepDisplay, toggleMode, showKeyboard
 
     public var id: String { rawValue }
 
@@ -69,7 +70,7 @@ public enum RemoteAction: String, CaseIterable, Codable, Sendable, Identifiable 
 
     public var group: Group {
         switch self {
-        case .none, .missionControl, .sleepDisplay, .toggleMode: .system
+        case .none, .missionControl, .sleepDisplay, .toggleMode, .showKeyboard: .system
         case .arrowUp, .arrowDown, .arrowLeft, .arrowRight, .returnKey, .escape, .space, .tab,
              .delete, .pageUp, .pageDown, .switchApp, .nextWindow, .closeWindow, .fullScreen, .spotlight: .keys
         case .pointerUp, .pointerDown, .pointerLeft, .pointerRight, .leftClick, .rightClick,
@@ -119,6 +120,7 @@ public enum RemoteAction: String, CaseIterable, Codable, Sendable, Identifiable 
         case .missionControl: "Mission Control"
         case .sleepDisplay: "Sleep Display"
         case .toggleMode: "Switch Mode"
+        case .showKeyboard: "Show Keyboard"
         }
     }
 
@@ -162,6 +164,7 @@ public enum RemoteAction: String, CaseIterable, Codable, Sendable, Identifiable 
         case .missionControl: .missionControl
         case .sleepDisplay: .sleepDisplay
         case .toggleMode: .toggleMode
+        case .showKeyboard: .keyboard
         }
     }
 

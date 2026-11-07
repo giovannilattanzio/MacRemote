@@ -18,6 +18,10 @@ enum Space {
 /// Corner radii.
 enum Radius {
     static let card: CGFloat = 10
+    /// On-screen keyboard keys.
+    static let key: CGFloat = 8
+    /// The on-screen keyboard's panel.
+    static let panel: CGFloat = 20
 }
 
 /// Widths.
@@ -29,4 +33,6 @@ enum Width {
     /// The remote drawing on the Remote page, and its thumbnail in Devices.
     static let remotePicture: CGFloat = 72
     static let remoteThumbnail: CGFloat = 16
+    /// One unit of the on-screen keyboard: a letter key is this wide and tall.
+    static let key: CGFloat = 48
 }

@@ -76,6 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func toggleEnabled() { model.engine.isEnabled.toggle() }
     @objc func toggleMode() { model.engine.toggleMode() }
+    @objc func toggleKeyboard() { model.keyboard.toggle() }
     @objc func restoreDefaults() { model.engine.restoreDefaults() }
     @objc func addApp() {
         model.sidebar = .apps
@@ -168,6 +169,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let engine = model.engine
         menu.addItem(item(engine.isEnabled ? "Pause Remote" : "Resume Remote", #selector(toggleEnabled), "p", shift: true))
         menu.addItem(item("Switch to \(engine.mode.next.title) Mode", #selector(toggleMode), "m", shift: true))
+        menu.addItem(item(model.keyboard.isOpen ? "Hide Keyboard" : "Show Keyboard", #selector(toggleKeyboard), "k", shift: true))
         menu.addItem(.separator())
         menu.addItem(item("Restore Default Buttons", #selector(restoreDefaults), "r", shift: true))
         menu.addItem(item("Add App…", #selector(addApp), "a", shift: true))

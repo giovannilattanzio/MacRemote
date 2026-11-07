@@ -29,7 +29,7 @@ know are learned by usage and show in the Buttons page.
 - Unit tests: `swift test --scratch-path ~/Library/Developer/MacRemote/test-build`.
 - Self-test (the app's real functions on a /tmp store): `tools/selftest.sh`. Exit 0 when every check passes. Add a check for every story with logic in `SelfTest.swift`.
 - After every UI change, take snapshots with sample data and look at them: `tools/snap.sh`.
-  It writes `/tmp/MacRemote-shots/<page>-light.png` and `-dark.png` for every sidebar page, and `settings-light.png` and `settings-dark.png`, then quits. `APP_SNAPSHOT_PAGES=remote,settings tools/snap.sh` limits the pages.
+  It writes `/tmp/MacRemote-shots/<page>-light.png` and `-dark.png` for every sidebar page, `settings-light.png` and `settings-dark.png`, and `keyboard-light.png` and `keyboard-dark.png` (the on-screen keyboard), then quits. `APP_SNAPSHOT_PAGES=remote,settings tools/snap.sh` limits the pages.
 - Snapshots, seed data, and the self-test refuse to run without `APP_STORE`. With it set, settings go to a throwaway defaults domain and no real remote is opened.
 - The self-test drives the real engine with simulated presses into a recorder; nothing is posted to the Mac.
 - `build.sh` and `tools/release.sh` sign with the self-signed "MacRemote Signing" certificate when it's in the keychain, so Input Monitoring and Accessibility survive rebuilds. Without it they sign ad hoc, and both permissions must be removed and added again after every rebuild.

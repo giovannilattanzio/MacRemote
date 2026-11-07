@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage("showModeHUD", store: Store.defaults) private var showModeHUD = true
     @AppStorage(RemoteNotifier.settingKey, store: Store.defaults) private var notifyConnections = true
     @AppStorage(RemoteNotifier.batterySettingKey, store: Store.defaults) private var notifyLowBattery = true
+    @AppStorage(KeyboardController.settingKey, store: Store.defaults) private var keyboardForTextFields = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xxl) {
@@ -19,6 +20,13 @@ struct SettingsView: View {
             Card(title: "General") {
                 Row(title: "Show the mode on screen when it changes") {
                     Toggle("Show the mode on screen", isOn: $showModeHUD)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                CardDivider()
+                Row(title: "Show a keyboard when the remote selects a text field",
+                    subtitle: "Type with the D-pad and Select. Rewind deletes, Fast Forward adds a space, Back closes it.") {
+                    Toggle("Show a keyboard when the remote selects a text field", isOn: $keyboardForTextFields)
                         .toggleStyle(.switch)
                         .labelsHidden()
                 }

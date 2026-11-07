@@ -33,6 +33,11 @@ final class RemoteEngine: ObservableObject {
     /// Every button pressed since launch. A TV control here means the remote has them.
     @Published private(set) var seen: Set<RemoteButton> = []
     var onModeChange: ((RemoteMode) -> Void)?
+    /// Every press, before its action runs: the keyboard watches for text fields.
+    var onPress: ((RemoteAction) -> Void)?
+    /// The on-screen keyboard. While it is open, the buttons in
+    /// KeyboardButtons type on it instead of doing their own actions.
+    weak var keyboard: KeyboardInput?
 
     /// 0 slow ... 1 fast, from Settings.
     var pointerSpeed: Double { defaults.object(forKey: "pointerSpeed") as? Double ?? 0.5 }
@@ -49,6 +54,8 @@ final class RemoteEngine: ObservableObject {
         var fired: Int
         /// False when macOS performs the action itself.
         let perform: Bool
+        /// Where the action goes: the Mac, or the on-screen keyboard.
+        let target: EffectSink
     }
     private var held: [RemoteKey: Held] = [:]
     private var timer: Timer?
@@ -113,28 +120,46 @@ final class RemoteEngine: ObservableObject {
 
     private func press(_ key: RemoteKey, usage: HIDUsage, exclusive: Bool, device: String) {
         guard isEnabled, held[key] == nil else { return }
+        if let keyboard, keyboard.isOpen, let typing = key.button.flatMap(KeyboardButtons.action(for:)) {
+            pressKeyboard(key, usage: usage, action: typing, keyboard: keyboard, device: device)
+            return
+        }
         let action = appOverrides.action(for: key, app: frontmostApp()) ?? profile.action(for: key, in: mode)
         let byMac = !exclusive && RemoteAction.native(for: usage) == action
+        onPress?(action)
         recent.insert(Press(key: key, usage: usage, action: action, device: device,
                             date: .now, handledByMac: byMac), at: 0)
         if recent.count > 12 { recent.removeLast() }
         log.info("press \(key.raw, privacy: .public) mode=\(self.mode.rawValue, privacy: .public) action=\(action.rawValue, privacy: .public) byMac=\(byMac)")
         guard action != .none else { return }
-        if action == .toggleMode {
-            toggleMode()
-            // Held like any button, so a repeated report of the same press does not switch back.
-            held[key] = Held(action: action, start: clock(), fired: 1, perform: false)
+        if action == .toggleMode || action == .showKeyboard {
+            if action == .toggleMode { toggleMode() } else { keyboard?.open() }
+            // Held like any button, so a repeated report of the same press does not run it again.
+            held[key] = Held(action: action, start: clock(), fired: 1, perform: false, target: sink)
             return
         }
         let now = clock()
-        held[key] = Held(action: action, start: now, fired: 1, perform: !byMac)
+        held[key] = Held(action: action, start: now, fired: 1, perform: !byMac, target: sink)
         if !byMac { sink.begin(action) }
+        if action.hold != .once { startTimer() }
+    }
+
+    /// The keyboard gets the press even from a shared remote: RemoteKeyFilter
+    /// drops the key macOS makes from it while the keyboard is open.
+    private func pressKeyboard(_ key: RemoteKey, usage: HIDUsage, action: RemoteAction,
+                               keyboard: KeyboardInput, device: String) {
+        recent.insert(Press(key: key, usage: usage, action: action, device: device,
+                            date: .now, handledByMac: false), at: 0)
+        if recent.count > 12 { recent.removeLast() }
+        log.info("press \(key.raw, privacy: .public) keyboard action=\(action.rawValue, privacy: .public)")
+        held[key] = Held(action: action, start: clock(), fired: 1, perform: true, target: keyboard)
+        keyboard.begin(action)
         if action.hold != .once { startTimer() }
     }
 
     private func release(_ key: RemoteKey) {
         guard let entry = held.removeValue(forKey: key) else { return }
-        if entry.perform { sink.end(entry.action) }
+        if entry.perform { entry.target.end(entry.action) }
         if held.isEmpty { stopTimer() }
     }
 
@@ -182,8 +207,8 @@ final class RemoteEngine: ObservableObject {
                 guard entry.action.hold == .repeats else { continue }
                 let due = repeatTiming.presses(heldFor: heldFor)
                 while entry.fired < due {
-                    sink.begin(entry.action)
-                    sink.end(entry.action)
+                    entry.target.begin(entry.action)
+                    entry.target.end(entry.action)
                     entry.fired += 1
                 }
                 held[key] = entry

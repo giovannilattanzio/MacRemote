@@ -1,11 +1,13 @@
 import AppKit
 import IOKit.pwr_mgt
+import MacRemoteKit
 
 /// Screenshot mode for agents.
 ///   APP_STORE=test APP_SNAPSHOT=/tmp/shots /Applications/MacRemote.app/Contents/MacOS/MacRemote
 /// writes <page>-light.png and <page>-dark.png for every sidebar page, and
-/// settings-light.png and settings-dark.png, then quits.
-/// APP_SNAPSHOT_PAGES=remote,buttons limits the pages. Add "settings" to include Settings.
+/// settings-light.png and settings-dark.png, and keyboard-light.png and
+/// keyboard-dark.png (the on-screen keyboard), then quits.
+/// APP_SNAPSHOT_PAGES=remote,buttons limits the pages. Add "settings" or "keyboard" to include them.
 @MainActor
 enum Snapshot {
     static var requested: Bool { !(ProcessInfo.processInfo.environment["APP_SNAPSHOT"] ?? "").isEmpty }
@@ -47,6 +49,18 @@ enum Snapshot {
                     capture(delegate.settingsWindow.window, to: "\(dir)/settings-\(mode).png")
                 }
             }
+            if only == nil || only?.contains("keyboard") == true {
+                let keyboard = delegate.model.keyboard
+                keyboard.open()
+                // Show a highlighted key away from the corner.
+                for action in [RemoteAction.arrowDown, .arrowDown, .arrowRight, .arrowRight] { keyboard.begin(action) }
+                for mode in ["light", "dark"] {
+                    NSApp.appearance = NSAppearance(named: mode == "light" ? .aqua : .darkAqua)
+                    await pause(0.8)
+                    capture(keyboard.panelWindow, to: "\(dir)/keyboard-\(mode).png", activate: false)
+                }
+                keyboard.close()
+            }
             print("SNAPSHOT done \(dir)")
             NSApp.terminate(nil)
         }
@@ -60,14 +74,16 @@ enum Snapshot {
     /// look exactly as on screen. That needs Screen Recording permission for
     /// the app that started this one (your terminal, or Claude). Without it,
     /// falls back to drawing the view hierarchy, which leaves sidebars blank.
-    private static func capture(_ window: NSWindow?, to path: String) {
+    private static func capture(_ window: NSWindow?, to path: String, activate: Bool = true) {
         if NSApp.isHidden { NSApp.unhideWithoutActivation() }
         guard let window else {
             print("SNAPSHOT no window")
             return
         }
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+        if activate {
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+        }
         try? FileManager.default.removeItem(atPath: path)
         // The first capture of a run sometimes misses the window. Try three times.
         for _ in 1...3 {
