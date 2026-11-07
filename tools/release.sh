@@ -36,10 +36,19 @@ fi
 [[ -n "$identity" ]] || identity=-
 
 echo "building universal release…"
-swift build -c release --arch arm64 --arch x86_64 --package-path "$here" --scratch-path "$scratch" 2>&1 \
-  | grep -E "error|warning:|Build complete" || true
-bin="$scratch/apple/Products/Release/$name"
-[[ -x "$bin" ]] || { echo "build failed"; exit 1; }
+build=(swift build -c release --arch arm64 --arch x86_64 --package-path "$here" --scratch-path "$scratch")
+log="$scratch-log.txt"
+mkdir -p "${scratch:h}"
+code=0
+"${build[@]}" > "$log" 2>&1 || code=$?
+grep -E "error|warning:|Build complete" "$log" || true
+# Ask SwiftPM where the universal build went: newer versions use a different folder.
+bin="$("${build[@]}" --show-bin-path 2>/dev/null)/$name"
+if [[ $code -ne 0 || ! -x "$bin" ]]; then
+  echo "build failed (exit $code, looked for $bin); full output:"
+  cat "$log"
+  exit 1
+fi
 
 version="${VERSION:-$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$here/Info.plist.in")}"
 app="$dist/$name.app"
